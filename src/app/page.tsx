@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sparkles, Plus, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { CreateActivityInput } from '@/lib/database/schema'
+import { createActivity, getActivities, ActivityWithDetails } from '@/lib/api/activities'
 import ProfileSetup from '@/components/ProfileSetup'
 import Navigation from '@/components/Navigation'
 import ActivityCard from '@/components/ActivityCard'
@@ -20,6 +22,47 @@ export default function Home() {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingActivities, setLoadingActivities] = useState(false)
+
+  // Load activities when user is authenticated
+  useEffect(() => {
+    const loadActivities = async () => {
+      if (!user) return
+      
+      try {
+        setLoadingActivities(true)
+        const apiActivities = await getActivities()
+        
+        // Convert API activities to legacy format for existing components
+        const legacyActivities: Activity[] = apiActivities.map(activity => ({
+          id: parseInt(activity.id) || 0,
+          title: activity.title,
+          description: activity.description || '',
+          timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
+          location: activity.location || '',
+          host: {
+            id: parseInt(activity.creator.id) || 0,
+            name: activity.creator.name || 'Unknown',
+            avatar: activity.creator.avatar || undefined
+          },
+          type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
+          interested: [],
+          joinRequests: {},
+          vibe: 'chill', // Default since vibe field was removed
+          visibility: activity.visibility
+        }))
+        
+        setActivities(legacyActivities)
+      } catch (err) {
+        console.error('Failed to load activities:', err)
+        // Keep existing mock data if API fails
+      } finally {
+        setLoadingActivities(false)
+      }
+    }
+
+    loadActivities()
+  }, [user])
 
   // Show loading while checking authentication
   if (loading) {
@@ -214,33 +257,41 @@ export default function Home() {
     }
   }
 
-  const handleCreateActivity = async (formData: any) => {
+  const handleCreateActivity = async (formData: CreateActivityInput & { timeframe: string }) => {
     try {
       setIsLoading(true)
       setError(null)
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Extract timeframe for client display and remove it for API call
+      const { timeframe, ...apiData } = formData
       
-      const newActivity: Activity = {
-        id: activities.length + 1,
-        title: formData.title,
-        description: formData.description,
-        timeframe: formData.timeframe,
-        location: formData.location,
-        host: { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar },
-        type: formData.timeframe.toLowerCase().includes('now') || formData.timeframe.toLowerCase().includes('30') 
-          ? 'spontaneous' 
-          : 'planned',
+      // Create the activity via API
+      const newActivity = await createActivity(apiData)
+      
+      // Convert API response to legacy Activity format for existing components
+      const legacyActivity: Activity = {
+        id: parseInt(newActivity.id) || activities.length + 1,
+        title: newActivity.title,
+        description: newActivity.description || '',
+        timeframe: timeframe, // Use the timeframe from form data
+        location: newActivity.location || '',
+        host: { 
+          id: parseInt(newActivity.creator.id) || 1, 
+          name: newActivity.creator.name || 'User', 
+          avatar: newActivity.creator.avatar || undefined 
+        },
+        type: newActivity.category === 'spontaneous' ? 'spontaneous' : 'planned',
         interested: [],
         joinRequests: {},
-        vibe: formData.vibe,
-        visibility: formData.visibility
+        vibe: 'chill', // Default since vibe field was removed from schema
+        visibility: newActivity.visibility
       }
-      setActivities([newActivity, ...activities])
+      
+      setActivities([legacyActivity, ...activities])
       setShowActivityForm(false)
     } catch (err) {
-      setError('Failed to create activity. Please try again.')
+      console.error('Create activity error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create activity. Please try again.')
     } finally {
       setIsLoading(false)
     }
