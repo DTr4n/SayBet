@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Plus } from 'lucide-react'
+import { Sparkles, Plus, LogOut } from 'lucide-react'
+import { useAuth } from '@/lib/auth/AuthContext'
+import ProfileSetup from '@/components/ProfileSetup'
 import Navigation from '@/components/Navigation'
 import ActivityCard from '@/components/ActivityCard'
 import ActivityForm from '@/components/ActivityForm'
@@ -12,23 +14,59 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { Activity, ActivityResponse, Friend, DiscoverFriend } from '@/types/activity'
 
 export default function Home() {
+  const { user, loading, logout, updateUser } = useAuth()
   const [activeTab, setActiveTab] = useState('activities')
-  const [availabilityStatus, setAvailabilityStatus] = useState("Free this evening")
+  const [availabilityStatus, setAvailabilityStatus] = useState(user?.availabilityStatus || "available")
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Show profile setup if user hasn't set their name
+  if (user && !user.name) {
+    return <ProfileSetup />
+  }
+
   const availabilityOptions = [
-    "Free right now",
-    "Free this evening", 
-    "Free this weekend",
-    "Down for coffee this week",
-    "Looking for weekend plans",
-    "Free for spontaneous hangouts",
-    "Busy until Friday"
+    { value: "available", label: "Available" },
+    { value: "busy", label: "Busy" },
+    { value: "invisible", label: "Invisible" }
   ]
 
-  const currentUser = { name: "You", avatar: "👤", id: 0 }
+  const currentUser = user ? { name: user.name, avatar: "👤", id: user.id } : { name: "You", avatar: "👤", id: "0" }
+
+  const handleAvailabilityChange = async (newStatus: string) => {
+    setAvailabilityStatus(newStatus)
+    
+    try {
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          availabilityStatus: newStatus,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        updateUser(data.user)
+      }
+    } catch (error) {
+      console.error('Failed to update availability status:', error)
+      // Revert on error
+      setAvailabilityStatus(user?.availabilityStatus || "available")
+    }
+  }
 
   // Mock activities data
   const [activities, setActivities] = useState<Activity[]>([
@@ -233,37 +271,70 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <div className={`hidden sm:flex items-center space-x-2 rounded-lg px-3 py-1 ${
+                availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
+                availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
+                'bg-gray-50 border border-gray-200'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  availabilityStatus === 'available' ? 'bg-green-400' :
+                  availabilityStatus === 'busy' ? 'bg-red-400' :
+                  'bg-gray-400'
+                }`}></div>
                 <select 
                   value={availabilityStatus}
-                  onChange={(e) => setAvailabilityStatus(e.target.value)}
-                  className="bg-transparent text-sm text-green-700 border-none outline-none"
+                  onChange={(e) => handleAvailabilityChange(e.target.value)}
+                  className={`bg-transparent text-sm border-none outline-none ${
+                    availabilityStatus === 'available' ? 'text-green-700' :
+                    availabilityStatus === 'busy' ? 'text-red-700' :
+                    'text-gray-700'
+                  }`}
                 >
                   {availabilityOptions.map(option => (
-                    <option key={option} value={option}>{option}</option>
+                    <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
               </div>
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <span className="hidden sm:inline text-sm text-gray-600">Hey,</span>
-                <span className="font-semibold text-indigo-700 text-sm sm:text-base">{currentUser.name}</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-indigo-200 to-cyan-200 rounded-full flex items-center justify-center">
-                  {currentUser.avatar}
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <span className="hidden sm:inline text-sm text-gray-600">Hey,</span>
+                  <span className="font-semibold text-indigo-700 text-sm sm:text-base">{currentUser.name}</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-indigo-200 to-cyan-200 rounded-full flex items-center justify-center">
+                    {currentUser.avatar}
+                  </div>
                 </div>
+                <button
+                  onClick={logout}
+                  className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
           {/* Mobile availability status */}
-          <div className="sm:hidden mt-3 flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+          <div className={`sm:hidden mt-3 flex items-center space-x-2 rounded-lg px-3 py-2 ${
+            availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
+            availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
+            'bg-gray-50 border border-gray-200'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              availabilityStatus === 'available' ? 'bg-green-400' :
+              availabilityStatus === 'busy' ? 'bg-red-400' :
+              'bg-gray-400'
+            }`}></div>
             <select 
               value={availabilityStatus}
-              onChange={(e) => setAvailabilityStatus(e.target.value)}
-              className="bg-transparent text-sm text-green-700 border-none outline-none w-full"
+              onChange={(e) => handleAvailabilityChange(e.target.value)}
+              className={`bg-transparent text-sm border-none outline-none w-full ${
+                availabilityStatus === 'available' ? 'text-green-700' :
+                availabilityStatus === 'busy' ? 'text-red-700' :
+                'text-gray-700'
+              }`}
             >
               {availabilityOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </div>

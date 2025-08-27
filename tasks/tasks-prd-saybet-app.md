@@ -1,13 +1,24 @@
 ## Relevant Files
 
 - `src/app/page.tsx` - Main application entry point and layout
-- `src/components/AuthForm.tsx` - Phone number authentication component
+- `src/components/AuthForm.tsx` - Phone number authentication component with SMS verification flow
+- `src/components/ProfileSetup.tsx` - User profile completion component
 - `src/components/ActivityFeed.tsx` - Activity display and interaction component
 - `src/components/ActivityForm.tsx` - Activity creation form component
 - `src/components/DiscoverTab.tsx` - AI suggestions and discovery interface
 - `src/components/FriendsTab.tsx` - Friend management and social network interface
 - `src/components/Navigation.tsx` - Tab navigation component
-- `src/lib/auth.ts` - Authentication utilities and phone verification
+- `src/lib/auth/index.ts` - Authentication utilities and session management
+- `src/lib/auth/AuthContext.tsx` - React context for authentication state
+- `src/lib/auth/sms.ts` - SMS verification service using Twilio
+- `src/lib/auth/config.ts` - NextAuth configuration (legacy)
+- `src/app/auth/page.tsx` - Authentication page
+- `src/app/api/auth/send-code/route.ts` - API route for sending SMS verification codes
+- `src/app/api/auth/verify-code/route.ts` - API route for verifying SMS codes
+- `src/app/api/auth/logout/route.ts` - API route for user logout
+- `src/app/api/auth/me/route.ts` - API route for getting current user data
+- `src/app/api/user/profile/route.ts` - API route for updating user profile
+- `src/middleware.ts` - Route protection middleware
 - `src/lib/api/activities.ts` - Activity CRUD operations and API calls
 - `src/lib/api/friends.ts` - Friend management API calls
 - `src/lib/api/ai.ts` - AI activity suggestion integration (Post-MVP)
@@ -63,14 +74,14 @@
   - [x] 3.7 Run initial migration and seed database with test data
   - [x] 3.8 Create database utility functions and connection management
 
-- [ ] 4.0 Authentication System Implementation
-  - [ ] 4.1 Set up phone number authentication with SMS verification (Twilio integration)
-  - [ ] 4.2 Create AuthForm component with phone input and verification code flow
-  - [ ] 4.3 Implement user session management and protected routes
-  - [ ] 4.4 Create user profile setup flow (display name, avatar upload)
-  - [ ] 4.5 Build availability status selection and management
-  - [ ] 4.6 Add logout functionality and session persistence
-  - [ ] 4.7 Create middleware for route protection and user context
+- [x] 4.0 Authentication System Implementation
+  - [x] 4.1 Set up phone number authentication with SMS verification (Twilio integration)
+  - [x] 4.2 Create AuthForm component with phone input and verification code flow
+  - [x] 4.3 Implement user session management and protected routes
+  - [x] 4.4 Create user profile setup flow (display name, avatar upload)
+  - [x] 4.5 Build availability status selection and management
+  - [x] 4.6 Add logout functionality and session persistence
+  - [x] 4.7 Create middleware for route protection and user context
 
 - [ ] 5.0 Core Activity Management Features
   - [ ] 5.1 Create API routes for activity CRUD operations (/api/activities)
