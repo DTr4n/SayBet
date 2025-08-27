@@ -37,15 +37,15 @@
   - [x] 1.6 Set up basic folder structure (app/, components/, lib/, types/)
   - [x] 1.7 Set up GitHub repository and initial commit structure
 
-- [ ] 2.0 UI Foundation and Core Components
-  - [ ] 2.1 Create global CSS with glass morphism utilities and gradient backgrounds
-  - [ ] 2.2 Build Navigation component with three-tab layout (Activities, Discover, Friends)
-  - [ ] 2.3 Create ActivityCard component for displaying activities with mock data
-  - [ ] 2.4 Implement ActivityForm modal component with all required fields
-  - [ ] 2.5 Build FriendCard component for displaying friend information
-  - [ ] 2.6 Create basic layout structure with header, navigation, and content areas
-  - [ ] 2.7 Implement responsive design breakpoints and mobile-first approach
-  - [ ] 2.8 Add loading states, empty states, and basic error boundaries
+- [x] 2.0 UI Foundation and Core Components
+  - [x] 2.1 Create global CSS with glass morphism utilities and gradient backgrounds
+  - [x] 2.2 Build Navigation component with three-tab layout (Activities, Discover, Friends)
+  - [x] 2.3 Create ActivityCard component for displaying activities with mock data
+  - [x] 2.4 Implement ActivityForm modal component with all required fields
+  - [x] 2.5 Build FriendCard component for displaying friend information
+  - [x] 2.6 Create basic layout structure with header, navigation, and content areas
+  - [x] 2.7 Implement responsive design breakpoints and mobile-first approach
+  - [x] 2.8 Add loading states, empty states, and basic error boundaries
 
 - [ ] 3.0 Database Setup and Schema Design
   - [ ] 3.1 Set up PostgreSQL database (local development and cloud provider)

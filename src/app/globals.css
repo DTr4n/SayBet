@@ -65,18 +65,40 @@
 
 /* Glass morphism utilities */
 .glass {
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .glass-card {
-  @apply glass rounded-2xl shadow-lg;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Enhanced glass effects */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 /* Gradient backgrounds */
 .bg-app-gradient {
-  background: linear-gradient(135deg, var(--color-slate-50) 0%, var(--color-blue-50) 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  min-height: 100vh;
 }
 
 .bg-primary-gradient {
@@ -92,40 +114,68 @@
 
 /* Activity status badges */
 .badge-spontaneous {
-  @apply bg-red-100 text-red-700;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 .badge-planned {
-  @apply bg-blue-100 text-blue-700;
+  background-color: #dbeafe;
+  color: #1d4ed8;
 }
 
 .badge-completed {
-  @apply bg-gray-100 text-gray-600;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 /* Vibe badges */
 .badge-active {
-  @apply bg-orange-100 text-orange-700;
+  background-color: #fed7aa;
+  color: #c2410c;
 }
 
 .badge-casual {
-  @apply bg-green-100 text-green-700;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
 .badge-social {
-  @apply bg-purple-100 text-purple-700;
+  background-color: #f3e8ff;
+  color: #7c3aed;
 }
 
 .badge-chill {
-  @apply bg-blue-100 text-blue-700;
+  background-color: #dbeafe;
+  color: #1d4ed8;
 }
 
 .badge-foodie {
-  @apply bg-red-100 text-red-700;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 .badge-competitive {
-  @apply bg-blue-100 text-blue-700;
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Custom hover effects and animations */
+.hover-scale {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.button-gradient {
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  transition: all 0.2s ease-in-out;
+}
+
+.button-gradient:hover {
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.25);
+  transform: scale(1.05);
 }
 
 body {
