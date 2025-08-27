@@ -11,10 +11,16 @@
 - `src/lib/api/activities.ts` - Activity CRUD operations and API calls
 - `src/lib/api/friends.ts` - Friend management API calls
 - `src/lib/api/ai.ts` - AI activity suggestion integration (Post-MVP)
-- `src/lib/database/schema.ts` - Database schema definitions
+- `src/lib/database/schema.ts` - Database schema definitions and validation schemas
+- `src/lib/database/client.ts` - Prisma client configuration and connection management
+- `src/lib/database/users.ts` - User service with CRUD operations and authentication helpers
+- `src/lib/database/activities.ts` - Activity service with CRUD operations and visibility logic
+- `src/lib/database/friendships.ts` - Friendship service with relationship management
+- `src/lib/database/index.ts` - Database utilities export file
 - `src/lib/utils/validators.ts` - Form validation utilities
 - `src/styles/globals.css` - Global styles and Tailwind configuration
 - `prisma/schema.prisma` - Prisma database schema
+- `prisma/seed.ts` - Database seeding script with test data
 - `next.config.js` - Next.js configuration
 - `package.json` - Dependencies and scripts
 
@@ -47,15 +53,15 @@
   - [x] 2.7 Implement responsive design breakpoints and mobile-first approach
   - [x] 2.8 Add loading states, empty states, and basic error boundaries
 
-- [ ] 3.0 Database Setup and Schema Design
-  - [ ] 3.1 Set up PostgreSQL database (local development and cloud provider)
-  - [ ] 3.2 Initialize Prisma and create schema for Users table with phone verification
-  - [ ] 3.3 Create Activities table with all required fields and relationships
-  - [ ] 3.4 Create Friendships table for user connections with status tracking
-  - [ ] 3.5 Create ActivityResponses table for "I'm in" and "Maybe" responses
-  - [ ] 3.6 Create PreviousConnections table for hangout history tracking
-  - [ ] 3.7 Run initial migration and seed database with test data
-  - [ ] 3.8 Create database utility functions and connection management
+- [x] 3.0 Database Setup and Schema Design
+  - [x] 3.1 Set up PostgreSQL database (local development and cloud provider)
+  - [x] 3.2 Initialize Prisma and create schema for Users table with phone verification
+  - [x] 3.3 Create Activities table with all required fields and relationships
+  - [x] 3.4 Create Friendships table for user connections with status tracking
+  - [x] 3.5 Create ActivityResponses table for "I'm in" and "Maybe" responses
+  - [x] 3.6 Create PreviousConnections table for hangout history tracking
+  - [x] 3.7 Run initial migration and seed database with test data
+  - [x] 3.8 Create database utility functions and connection management
 
 - [ ] 4.0 Authentication System Implementation
   - [ ] 4.1 Set up phone number authentication with SMS verification (Twilio integration)

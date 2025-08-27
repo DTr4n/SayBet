@@ -1,0 +1,107 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  avatar    String?
+  isVerified Boolean @default(false)
+  availabilityStatus String @default("available") // available, busy, invisible
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // SMS Verification fields
+  verificationCode String?
+  verificationExpiry DateTime?
+  
+  // Relationships
+  createdActivities Activity[] @relation("ActivityCreator")
+  activityResponses ActivityResponse[]
+  sentFriendships   Friendship[] @relation("FriendshipSender")
+  receivedFriendships Friendship[] @relation("FriendshipReceiver") 
+  previousConnectionsAsUser1 PreviousConnection[] @relation("ConnectionUser1")
+  previousConnectionsAsUser2 PreviousConnection[] @relation("ConnectionUser2")
+
+  @@map("users")
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  date        DateTime?
+  time        String?
+  category    String   // "spontaneous" or "planned"
+  visibility  String   @default("friends") // "friends", "previous", "open"
+  maxParticipants Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  creatorId   String
+  creator     User   @relation("ActivityCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  responses   ActivityResponse[]
+
+  @@map("activities")
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // pending, accepted, blocked
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  senderId   String
+  receiverId String
+  sender     User @relation("FriendshipSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  @@unique([senderId, receiverId])
+  @@map("friendships")
+}
+
+model ActivityResponse {
+  id        String   @id @default(cuid())
+  response  String   // "in", "maybe"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  userId     String
+  activityId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, activityId])
+  @@map("activity_responses")
+}
+
+model PreviousConnection {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Track hangout history between users
+  user1Id   String
+  user2Id   String
+  user1     User @relation("ConnectionUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User @relation("ConnectionUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  
+  // Optional: link to the activity where they met
+  activityId String?
+  
+  @@unique([user1Id, user2Id])
+  @@map("previous_connections")
+}

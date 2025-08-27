@@ -1,0 +1,5 @@
+export { prisma } from './client'
+export { UserService } from './users'
+export { ActivityService } from './activities'
+export { FriendshipService } from './friendships'
+export * from './schema'
