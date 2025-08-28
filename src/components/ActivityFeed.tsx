@@ -11,10 +11,10 @@ interface ActivityFeedProps {
   activities: Activity[]
   currentUserId?: number
   isLoading?: boolean
-  onJoinInterest?: (activityId: number, response: ActivityResponse) => void
+  onJoinInterest?: (activityId: string, response: ActivityResponse) => void
   onCreateActivity?: () => void
-  respondingToActivity?: number | null
-  onShare?: (activityId: number) => void
+  respondingToActivity?: string | null
+  onShare?: (activityId: string) => void
   showSocialProof?: boolean
 }
 

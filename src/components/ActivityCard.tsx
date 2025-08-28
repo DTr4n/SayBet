@@ -11,9 +11,9 @@ import FriendParticipants from './FriendParticipants'
 interface ActivityCardProps {
   activity: Activity | ActivityWithDetails
   currentUserId?: string
-  onJoinInterest?: (activityId: number, response: ActivityResponse) => void
+  onJoinInterest?: (activityId: string, response: ActivityResponse) => void
   isResponding?: boolean
-  onShare?: (activityId: number) => void
+  onShare?: (activityId: string) => void
   showSocialProof?: boolean
 }
 
@@ -66,7 +66,7 @@ const ActivityCard = ({ activity, currentUserId, onJoinInterest, isResponding = 
     }
   }
 
-  const userResponse = activity.joinRequests[currentUserId]
+  const userResponse = activity.joinRequests[parseInt(currentUserId?.toString()) || 0]
 
   const getVisibilityInfo = (visibility: string) => {
     switch (visibility) {
@@ -236,7 +236,7 @@ const ActivityCard = ({ activity, currentUserId, onJoinInterest, isResponding = 
                             👤
                           </div>
                           <span>
-                            {userId === currentUserId ? 'You' : `User ${userId}`}
+                            {userId === (parseInt(currentUserId?.toString()) || 0).toString() ? 'You' : `User ${userId}`}
                           </span>
                         </div>
                       ))}
@@ -258,7 +258,7 @@ const ActivityCard = ({ activity, currentUserId, onJoinInterest, isResponding = 
                             👤
                           </div>
                           <span>
-                            {parseInt(userId) === currentUserId ? 'You' : `User ${userId}`}
+                            {parseInt(userId) === (parseInt(currentUserId?.toString()) || 0) ? 'You' : `User ${userId}`}
                           </span>
                         </div>
                       ))}

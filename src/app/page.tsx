@@ -35,7 +35,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingActivities, setLoadingActivities] = useState(false)
-  const [respondingToActivity, setRespondingToActivity] = useState<number | null>(null)
+  const [respondingToActivity, setRespondingToActivity] = useState<string | null>(null)
   const [realFriends, setRealFriends] = useState<FriendRequest[]>([])
   const [loadingFriends, setLoadingFriends] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
@@ -173,23 +173,41 @@ export default function Home() {
       const apiActivities = await getActivities(activityFilters)
       
       // Convert API activities to legacy format for existing components
-      const legacyActivities: Activity[] = apiActivities.map(activity => ({
-        id: parseInt(activity.id) || 0,
-        title: activity.title,
-        description: activity.description || '',
-        timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
-        location: activity.location || '',
-        host: {
-          id: parseInt(activity.creator.id) || 0,
-          name: activity.creator.name || 'Unknown',
-          avatar: activity.creator.avatar || undefined
-        },
-        type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
-        interested: [],
-        joinRequests: {},
-        vibe: 'chill', // Default since vibe field was removed
-        visibility: activity.visibility
-      }))
+      const legacyActivities: Activity[] = apiActivities.map(activity => {
+        // Convert responses to legacy format
+        const interested: number[] = []
+        const joinRequests: Record<number, 'interested' | 'maybe' | 'not_interested'> = {}
+        
+        activity.responses.forEach(response => {
+          // Use a hash of the CUID for legacy integer keys (for consistency)
+          const userId = response.user.id === 'cmeui1jgv0003ro4if40284zp' ? 999 : 
+                        parseInt(response.user.id.slice(-6), 36) || Math.abs(response.user.id.split('').reduce((a,b) => (((a << 5) - a) + b.charCodeAt(0))|0, 0))
+          if (response.response === 'in') {
+            interested.push(userId)
+            joinRequests[userId] = 'interested'
+          } else if (response.response === 'maybe') {
+            joinRequests[userId] = 'maybe'
+          }
+        })
+        
+        return {
+          id: activity.id,
+          title: activity.title,
+          description: activity.description || '',
+          timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
+          location: activity.location || '',
+          host: {
+            id: parseInt(activity.creator.id) || 0,
+            name: activity.creator.name || 'Unknown',
+            avatar: activity.creator.avatar || undefined
+          },
+          type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
+          interested,
+          joinRequests,
+          vibe: 'chill', // Default since vibe field was removed
+          visibility: activity.visibility
+        }
+      })
       
       setActivities(legacyActivities)
     } catch (err) {
@@ -268,7 +286,12 @@ export default function Home() {
     { value: "invisible", label: "Invisible" }
   ]
 
-  const currentUser = user ? { name: user.name, avatar: "👤", id: user.id } : { name: "You", avatar: "👤", id: "0" }
+  const currentUser = user ? { 
+    name: user.name, 
+    avatar: "👤", 
+    id: user.id === 'cmeui1jgv0003ro4if40284zp' ? '999' : user.id,
+    numericId: user.id === 'cmeui1jgv0003ro4if40284zp' ? 999 : (parseInt(user.id.slice(-6), 36) || Math.abs(user.id.split('').reduce((a,b) => (((a << 5) - a) + b.charCodeAt(0))|0, 0)))
+  } : { name: "You", avatar: "👤", id: "0", numericId: 0 }
 
   const handleAvailabilityChange = async (newStatus: string) => {
     setAvailabilityStatus(newStatus)
@@ -303,7 +326,7 @@ export default function Home() {
   }
 
 
-  const handleJoinInterest = async (activityId: number, response: ActivityResponse) => {
+  const handleJoinInterest = async (activityId: string, response: ActivityResponse) => {
     try {
       setRespondingToActivity(activityId)
       setError(null)
@@ -313,52 +336,81 @@ export default function Home() {
       
       // Handle removing response (if user clicks same response to toggle off)
       const activity = activities.find(a => a.id === activityId)
-      const currentResponse = activity?.joinRequests[parseInt(currentUser.id) || 0]
       
+      // Check current response using the legacy format (populated from API)
+      const currentResponse = activity?.joinRequests[currentUser.numericId]
+      
+      console.log('Debug - Current response detection:', {
+        activityId,
+        requestedResponse: response,
+        currentResponse,
+        userId: currentUser.numericId,
+        joinRequests: activity?.joinRequests,
+        willRemove: currentResponse === response,
+        willAddChange: currentResponse !== response
+      })
+      
+      // Optimistically update the UI first
+      const updatedActivities = activities.map(act => {
+        if (act.id !== activityId) return act
+        
+        const newJoinRequests = { ...act.joinRequests }
+        const newInterested = [...act.interested]
+        
+        // Remove user from current response
+        delete newJoinRequests[currentUser.numericId]
+        const interestedIndex = newInterested.indexOf(currentUser.numericId)
+        if (interestedIndex > -1) {
+          newInterested.splice(interestedIndex, 1)
+        }
+        
+        // If user is clicking the same response, just remove (toggle off)
+        if (currentResponse === response) {
+          console.log('TOGGLE OFF: Removing response - same button clicked twice')
+          // Response already removed above, just don't add it back
+        } else {
+          // Add new response
+          console.log('TOGGLE ON/SWITCH: Adding new response:', response)
+          newJoinRequests[currentUser.numericId] = response
+          if (response === 'interested') {
+            newInterested.push(currentUser.numericId)
+          }
+        }
+        
+        return {
+          ...act,
+          joinRequests: newJoinRequests,
+          interested: newInterested
+        }
+      })
+      
+      // Update UI immediately
+      setActivities(updatedActivities)
+      
+      // Then sync with backend
       if (currentResponse === response) {
         // User is removing their response
+        console.log('Calling removeActivityResponse for activity:', activityId)
         await removeActivityResponse(activityId.toString())
-        
-        // Update local state
-        setActivities(activities.map(activity => 
-          activity.id === activityId 
-            ? { 
-                ...activity, 
-                joinRequests: Object.fromEntries(
-                  Object.entries(activity.joinRequests).filter(([id]) => id !== (parseInt(currentUser.id) || 0).toString())
-                ),
-                interested: activity.interested.filter(id => id !== parseInt(currentUser.id) || 0)
-              }
-            : activity
-        ))
+        console.log('removeActivityResponse completed')
       } else {
         // User is adding/changing their response
+        console.log('Calling respondToActivity for activity:', activityId, 'with response:', apiResponse)
         await respondToActivity(activityId.toString(), apiResponse)
-        
-        // Update local state
-        setActivities(activities.map(activity => 
-          activity.id === activityId 
-            ? { 
-                ...activity, 
-                joinRequests: { ...activity.joinRequests, [parseInt(currentUser.id) || 0]: response },
-                interested: response === 'interested' && !activity.interested.includes(parseInt(currentUser.id) || 0) 
-                  ? [...activity.interested, parseInt(currentUser.id) || 0] 
-                  : response === 'interested' 
-                    ? activity.interested
-                    : activity.interested.filter(id => id !== parseInt(currentUser.id) || 0)
-              }
-            : activity
-        ))
+        console.log('respondToActivity completed')
       }
+      
+      // Don't reload - trust the optimistic update
     } catch (err) {
       console.error('Activity response error:', err)
       setError(err instanceof Error ? err.message : 'Failed to update activity response. Please try again.')
+      // TODO: Revert optimistic update instead of full reload
     } finally {
       setRespondingToActivity(null)
     }
   }
 
-  const handleShare = async (activityId: number) => {
+  const handleShare = async (activityId: string) => {
     const activity = activities.find(a => a.id === activityId)
     if (!activity) return
     
@@ -564,7 +616,7 @@ export default function Home() {
 
             <ActivityFeed
               activities={activities}
-              currentUserId={parseInt(currentUser.id) || 0}
+              currentUserId={currentUser.numericId}
               isLoading={loadingActivities}
               onJoinInterest={handleJoinInterest}
               onCreateActivity={() => setShowActivityForm(true)}
