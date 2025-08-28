@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Sparkles, Plus, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { CreateActivityInput } from '@/lib/database/schema'
@@ -19,7 +20,10 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { Activity, ActivityResponse, Friend, DiscoverFriend } from '@/types/activity'
 
 export default function Home() {
+  const router = useRouter()
   const { user, loading, logout, updateUser } = useAuth()
+
+  // All state hooks must be called before any conditional returns
   const [activeTab, setActiveTab] = useState('activities')
   const [availabilityStatus, setAvailabilityStatus] = useState(user?.availabilityStatus || "available")
   const [showActivityForm, setShowActivityForm] = useState(false)
@@ -31,120 +35,7 @@ export default function Home() {
   const [loadingFriends, setLoadingFriends] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
 
-  // Load activities when user is authenticated
-  useEffect(() => {
-    const loadActivities = async () => {
-      if (!user) return
-      
-      try {
-        setLoadingActivities(true)
-        const apiActivities = await getActivities()
-        
-        // Convert API activities to legacy format for existing components
-        const legacyActivities: Activity[] = apiActivities.map(activity => ({
-          id: parseInt(activity.id) || 0,
-          title: activity.title,
-          description: activity.description || '',
-          timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
-          location: activity.location || '',
-          host: {
-            id: parseInt(activity.creator.id) || 0,
-            name: activity.creator.name || 'Unknown',
-            avatar: activity.creator.avatar || undefined
-          },
-          type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
-          interested: [],
-          joinRequests: {},
-          vibe: 'chill', // Default since vibe field was removed
-          visibility: activity.visibility
-        }))
-        
-        setActivities(legacyActivities)
-      } catch (err) {
-        console.error('Failed to load activities:', err)
-        // Keep existing mock data if API fails
-      } finally {
-        setLoadingActivities(false)
-      }
-    }
-
-    loadActivities()
-  }, [user])
-
-  // Load friends when user is authenticated
-  useEffect(() => {
-    const loadUserFriends = async () => {
-      if (!user) return
-      
-      try {
-        setLoadingFriends(true)
-        const friendsList = await getFriends()
-        setRealFriends(friendsList)
-      } catch (err) {
-        console.error('Failed to load friends:', err)
-      } finally {
-        setLoadingFriends(false)
-      }
-    }
-
-    loadUserFriends()
-  }, [user])
-
-  const handleFriendAdded = () => {
-    // Reload friends when a new friend is added
-    if (user) {
-      getFriends().then(setRealFriends).catch(console.error)
-    }
-  }
-
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  // Show profile setup if user hasn't set their name
-  if (user && !user.name) {
-    return <ProfileSetup />
-  }
-
-  const availabilityOptions = [
-    { value: "available", label: "Available" },
-    { value: "busy", label: "Busy" },
-    { value: "invisible", label: "Invisible" }
-  ]
-
-  const currentUser = user ? { name: user.name, avatar: "👤", id: user.id } : { name: "You", avatar: "👤", id: "0" }
-
-  const handleAvailabilityChange = async (newStatus: string) => {
-    setAvailabilityStatus(newStatus)
-    
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          availabilityStatus: newStatus,
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        updateUser(data.user)
-      }
-    } catch (error) {
-      console.error('Failed to update availability status:', error)
-      // Revert on error
-      setAvailabilityStatus(user?.availabilityStatus || "available")
-    }
-  }
-
-  // Mock activities data
+  // Mock activities data - must be initialized before any returns
   const [activities, setActivities] = useState<Activity[]>([
     {
       id: 1,
@@ -263,6 +154,139 @@ export default function Home() {
       mutualFriends: 3 
     }
   ])
+
+
+  // Load activities when user is authenticated
+  useEffect(() => {
+    const loadActivities = async () => {
+      if (!user) return
+      
+      try {
+        setLoadingActivities(true)
+        const apiActivities = await getActivities()
+        
+        // Convert API activities to legacy format for existing components
+        const legacyActivities: Activity[] = apiActivities.map(activity => ({
+          id: parseInt(activity.id) || 0,
+          title: activity.title,
+          description: activity.description || '',
+          timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
+          location: activity.location || '',
+          host: {
+            id: parseInt(activity.creator.id) || 0,
+            name: activity.creator.name || 'Unknown',
+            avatar: activity.creator.avatar || undefined
+          },
+          type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
+          interested: [],
+          joinRequests: {},
+          vibe: 'chill', // Default since vibe field was removed
+          visibility: activity.visibility
+        }))
+        
+        setActivities(legacyActivities)
+      } catch (err) {
+        console.error('Failed to load activities:', err)
+        // Keep existing mock data if API fails
+      } finally {
+        setLoadingActivities(false)
+      }
+    }
+
+    loadActivities()
+  }, [user])
+
+  // Load friends when user is authenticated
+  useEffect(() => {
+    const loadUserFriends = async () => {
+      if (!user) return
+      
+      try {
+        setLoadingFriends(true)
+        const friendsList = await getFriends()
+        setRealFriends(friendsList)
+      } catch (err) {
+        console.error('Failed to load friends:', err)
+      } finally {
+        setLoadingFriends(false)
+      }
+    }
+
+    loadUserFriends()
+  }, [user])
+
+  const handleFriendAdded = () => {
+    // Reload friends when a new friend is added
+    if (user) {
+      getFriends().then(setRealFriends).catch(console.error)
+    }
+  }
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Show auth form if not authenticated
+  if (!loading && !user) {
+    console.log('Home: No user, showing auth form')
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Please sign in</h1>
+          <button 
+            onClick={() => window.location.href = '/auth'}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show profile setup if user hasn't set their name
+  if (user && !user.name) {
+    return <ProfileSetup />
+  }
+
+  const availabilityOptions = [
+    { value: "available", label: "Available" },
+    { value: "busy", label: "Busy" },
+    { value: "invisible", label: "Invisible" }
+  ]
+
+  const currentUser = user ? { name: user.name, avatar: "👤", id: user.id } : { name: "You", avatar: "👤", id: "0" }
+
+  const handleAvailabilityChange = async (newStatus: string) => {
+    setAvailabilityStatus(newStatus)
+    
+    try {
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          availabilityStatus: newStatus,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        updateUser(data.user)
+      }
+    } catch (error) {
+      console.error('Failed to update availability status:', error)
+      // Revert on error
+      setAvailabilityStatus(user?.availabilityStatus || "available")
+    }
+  }
+
 
   const handleJoinInterest = async (activityId: number, response: ActivityResponse) => {
     try {

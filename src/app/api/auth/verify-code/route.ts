@@ -13,8 +13,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { phone, code } = VerifyCodeSchema.parse(body)
 
+    // Format phone number to match what was stored
+    const { SMSService } = await import('@/lib/auth/sms')
+    const formattedPhone = SMSService.formatPhoneNumber(phone)
+
     // Verify the code
-    const user = await UserService.verifyUser({ phone, verificationCode: code })
+    const user = await UserService.verifyUser({ phone: formattedPhone, verificationCode: code })
 
     // Generate JWT token
     const token = jwt.sign(
@@ -28,16 +32,21 @@ export async function POST(request: NextRequest) {
     )
 
     // Create the response with the token as an HTTP-only cookie
+    const userResponse = {
+      id: user.id,
+      phone: user.phone,
+      name: user.name,
+      avatar: user.avatar,
+      isVerified: user.isVerified,
+      availabilityStatus: user.availabilityStatus,
+      createdAt: user.createdAt,
+    }
+    
+    
     const response = NextResponse.json({
       success: true,
       message: 'Phone number verified successfully',
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        isVerified: user.isVerified,
-        availabilityStatus: user.availabilityStatus,
-      },
+      user: userResponse,
     })
 
     // Set HTTP-only cookie for authentication

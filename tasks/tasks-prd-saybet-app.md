@@ -82,6 +82,7 @@
   - [x] 4.5 Build availability status selection and management
   - [x] 4.6 Add logout functionality and session persistence
   - [x] 4.7 Create middleware for route protection and user context
+  - [ ] 4.8 Re-enable authentication middleware (currently disabled for development)
 
 - [x] 5.0 Core Activity Management Features
   - [x] 5.1 Create API routes for activity CRUD operations (/api/activities)

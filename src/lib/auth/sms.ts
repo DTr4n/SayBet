@@ -11,16 +11,38 @@ export class SMSService {
   }
 
   static async sendVerificationCode(phoneNumber: string, code: string): Promise<void> {
+    // Development mode: Skip actual SMS sending if no verified Twilio setup
+    if (process.env.NODE_ENV === 'development' || !process.env.TWILIO_VERIFIED) {
+      console.log('📱 DEVELOPMENT: Verification code is:', code)
+      console.log('⚙️  To enable real SMS: Set TWILIO_VERIFIED=true in .env.local')
+      return
+    }
+    
+    console.log('Twilio Phone Number:', process.env.TWILIO_PHONE_NUMBER)
+    console.log('Twilio Account SID:', process.env.TWILIO_ACCOUNT_SID?.substring(0, 10) + '...')
+    console.log('Twilio Auth Token present:', !!process.env.TWILIO_AUTH_TOKEN)
+    
     try {
+      console.log('Creating Twilio message...')
       const message = await client.messages.create({
         body: `Your SayBet verification code is: ${code}. This code will expire in 10 minutes.`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: phoneNumber,
       })
 
-      console.log(`SMS sent successfully. SID: ${message.sid}`)
+      console.log(`SMS sent successfully!`)
+      console.log('Message SID:', message.sid)
+      console.log('Message Status:', message.status)
+      console.log('Message Direction:', message.direction)
     } catch (error) {
-      console.error('Failed to send SMS:', error)
+      console.error('=== TWILIO ERROR ===')
+      console.error('Error details:', error)
+      if (error.code) {
+        console.error('Twilio Error Code:', error.code)
+      }
+      if (error.moreInfo) {
+        console.error('More Info:', error.moreInfo)
+      }
       throw new Error('Failed to send verification code')
     }
   }

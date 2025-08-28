@@ -13,8 +13,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Check if NEXTAUTH_SECRET is set
+    if (!process.env.NEXTAUTH_SECRET) {
+      console.error('NEXTAUTH_SECRET environment variable is not set')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
     // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!) as {
+    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET) as {
       userId: string
       phone: string
       isVerified: boolean

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Phone, MessageSquare, ArrowRight, Loader2 } from 'lucide-react'
 
@@ -14,6 +15,7 @@ export default function AuthForm() {
   const [error, setError] = useState('')
   const [codeSent, setCodeSent] = useState(false)
 
+  const router = useRouter()
   const { sendCode, login } = useAuth()
 
   const formatPhoneDisplay = (value: string) => {
@@ -63,6 +65,8 @@ export default function AuthForm() {
 
     try {
       await login(phone, code)
+      // Redirect to home page after successful login
+      window.location.href = '/'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to verify code')
     } finally {
