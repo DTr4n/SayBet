@@ -2,8 +2,10 @@
 
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Zap, Clock, Lightbulb } from 'lucide-react'
 import { CreateActivitySchema, CreateActivityInput } from '@/lib/database/schema'
+import { categorizeActivityByTiming, suggestTimeframeForCategory } from '@/lib/utils/activityUtils'
 import LoadingSpinner from './LoadingSpinner'
 import { z } from 'zod'
 
@@ -14,8 +16,8 @@ const ClientActivitySchema = z.object({
   location: z.string().optional(),
   date: z.string().optional(),
   time: z.string().optional(),
-  category: z.enum(['spontaneous', 'planned']).default('spontaneous'),
-  visibility: z.enum(['friends', 'previous', 'open']).default('friends'),
+  category: z.enum(['spontaneous', 'planned']).optional().default('spontaneous'),
+  visibility: z.enum(['friends', 'previous', 'open']).optional().default('friends'),
   maxParticipants: z.string().optional(),
   timeframe: z.string().min(1, 'Please specify when this activity will happen')
 })
@@ -36,6 +38,7 @@ const ActivityForm = ({ isOpen, onClose, onSubmit, initialData, isLoading = fals
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<ClientActivityInput>({
     resolver: zodResolver(ClientActivitySchema),
@@ -51,6 +54,42 @@ const ActivityForm = ({ isOpen, onClose, onSubmit, initialData, isLoading = fals
       maxParticipants: initialData?.maxParticipants || '',
     }
   })
+
+  // Watch form values for automatic categorization
+  const watchedTimeframe = watch('timeframe')
+  const watchedDate = watch('date')
+  const watchedTime = watch('time')
+  const currentCategory = watch('category')
+  
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [suggestedCategory, setSuggestedCategory] = useState<'spontaneous' | 'planned' | null>(null)
+  
+  // Auto-categorize when timeframe changes
+  useEffect(() => {
+    if (watchedTimeframe || watchedDate || watchedTime) {
+      const autoCategory = categorizeActivityByTiming({
+        timeframe: watchedTimeframe,
+        date: watchedDate,
+        time: watchedTime
+      })
+      
+      // Only suggest if it's different from current
+      if (autoCategory !== currentCategory) {
+        setSuggestedCategory(autoCategory)
+      } else {
+        setSuggestedCategory(null)
+      }
+    }
+  }, [watchedTimeframe, watchedDate, watchedTime, currentCategory])
+  
+  const timeframeSuggestions = currentCategory ? suggestTimeframeForCategory(watchedTimeframe || '', currentCategory) : []
+  
+  const applySuggestedCategory = () => {
+    if (suggestedCategory) {
+      setValue('category', suggestedCategory)
+      setSuggestedCategory(null)
+    }
+  }
 
   const handleFormSubmit = async (data: ClientActivityInput) => {
     try {
@@ -128,9 +167,21 @@ const ActivityForm = ({ isOpen, onClose, onSubmit, initialData, isLoading = fals
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                When? *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  When? *
+                </label>
+                {timeframeSuggestions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center space-x-1"
+                  >
+                    <Lightbulb className="w-3 h-3" />
+                    <span>Suggestions</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 {...register('timeframe')}
@@ -141,6 +192,30 @@ const ActivityForm = ({ isOpen, onClose, onSubmit, initialData, isLoading = fals
               />
               {errors.timeframe && (
                 <p className="text-red-500 text-sm mt-1">{errors.timeframe.message}</p>
+              )}
+              
+              {/* Timeframe Suggestions */}
+              {showSuggestions && timeframeSuggestions.length > 0 && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 mb-2">
+                    Popular {currentCategory} activities:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {timeframeSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          setValue('timeframe', suggestion)
+                          setShowSuggestions(false)
+                        }}
+                        className="px-2 py-1 text-xs bg-white border rounded hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -206,31 +281,75 @@ const ActivityForm = ({ isOpen, onClose, onSubmit, initialData, isLoading = fals
                     errors.visibility ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
-                  <option value="friends">Friends Only</option>
-                  <option value="previous">Previous Hangout People</option>
-                  <option value="open">Open to All</option>
+                  <option value="friends">🛡️ Friends Only - Only people you've added as friends</option>
+                  <option value="previous">👥 Previous Hangouts - People you've hung out with before</option>
+                  <option value="open">🌍 Open to All - Anyone in your area can join</option>
                 </select>
                 {errors.visibility && (
                   <p className="text-red-500 text-sm mt-1">{errors.visibility.message}</p>
                 )}
+                <div className="mt-2">
+                  {watch('visibility') === 'friends' && (
+                    <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      Only your confirmed friends will be able to see and join this activity.
+                    </p>
+                  )}
+                  {watch('visibility') === 'previous' && (
+                    <p className="text-xs text-purple-600 bg-purple-50 p-2 rounded">
+                      People you've previously hung out with will be able to see and join this activity.
+                    </p>
+                  )}
+                  {watch('visibility') === 'open' && (
+                    <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                      Anyone in your area can discover and join this activity. Great for meeting new people!
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Category
+                  </label>
+                  {suggestedCategory && (
+                    <button
+                      type="button"
+                      onClick={applySuggestedCategory}
+                      className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full hover:bg-amber-200 transition-colors flex items-center space-x-1"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>Auto: {suggestedCategory}</span>
+                    </button>
+                  )}
+                </div>
                 <select
                   {...register('category')}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                     errors.category ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
-                  <option value="spontaneous">Spontaneous</option>
-                  <option value="planned">Planned</option>
+                  <option value="spontaneous">⚡ Spontaneous - Happening soon</option>
+                  <option value="planned">📅 Planned - Scheduled in advance</option>
                 </select>
                 {errors.category && (
                   <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
                 )}
+                
+                <div className="mt-2">
+                  {currentCategory === 'spontaneous' && (
+                    <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded flex items-center space-x-1">
+                      <Zap className="w-3 h-3" />
+                      <span>Perfect for spur-of-the-moment hangouts and activities happening within a few hours!</span>
+                    </p>
+                  )}
+                  {currentCategory === 'planned' && (
+                    <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded flex items-center space-x-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Great for activities you're organizing in advance with specific dates and times.</span>
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
