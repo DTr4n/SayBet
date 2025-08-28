@@ -86,12 +86,12 @@
 - [ ] 5.0 Core Activity Management Features
   - [x] 5.1 Create API routes for activity CRUD operations (/api/activities)
   - [x] 5.2 Implement activity creation with form validation and submission
-  - [ ] 5.3 Build activity feed display with current vs past activity sections
-  - [ ] 5.4 Add activity response system ("I'm in!", "Maybe" functionality)
-  - [ ] 5.5 Implement activity visibility logic (Friends, Previous Hangout People, Open)
-  - [ ] 5.6 Create automatic activity categorization (spontaneous vs planned based on timeframe)
-  - [ ] 5.7 Add activity sharing capabilities with web links
-  - [ ] 5.8 Build activity detail view and participant list
+  - [x] 5.3 Build activity feed display with current vs past activity sections
+  - [x] 5.4 Add activity response system ("I'm in!", "Maybe" functionality)
+  - [x] 5.5 Implement activity visibility logic (Friends, Previous Hangout People, Open)
+  - [x] 5.6 Create automatic activity categorization (spontaneous vs planned based on timeframe)
+  - [x] 5.7 Add activity sharing capabilities with web links
+  - [x] 5.8 Build activity detail view and participant list
 
 - [ ] 6.0 Friend Network and Social Features
   - [ ] 6.1 Create API routes for friend management (/api/friends)
