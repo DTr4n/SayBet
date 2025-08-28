@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react'
 import { Sparkles, Plus, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { CreateActivityInput } from '@/lib/database/schema'
-import { createActivity, getActivities, ActivityWithDetails } from '@/lib/api/activities'
+import { createActivity, getActivities, respondToActivity, removeActivityResponse, ActivityWithDetails } from '@/lib/api/activities'
+import { getFriends, FriendRequest } from '@/lib/api/friends'
 import ProfileSetup from '@/components/ProfileSetup'
 import Navigation from '@/components/Navigation'
 import ActivityCard from '@/components/ActivityCard'
+import ActivityFeed from '@/components/ActivityFeed'
 import ActivityForm from '@/components/ActivityForm'
 import FriendCard from '@/components/FriendCard'
+import FriendsManager from '@/components/FriendsManager'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import EmptyState from '@/components/EmptyState'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -23,6 +26,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingActivities, setLoadingActivities] = useState(false)
+  const [respondingToActivity, setRespondingToActivity] = useState<number | null>(null)
+  const [realFriends, setRealFriends] = useState<FriendRequest[]>([])
+  const [loadingFriends, setLoadingFriends] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState(false)
 
   // Load activities when user is authenticated
   useEffect(() => {
@@ -63,6 +70,32 @@ export default function Home() {
 
     loadActivities()
   }, [user])
+
+  // Load friends when user is authenticated
+  useEffect(() => {
+    const loadUserFriends = async () => {
+      if (!user) return
+      
+      try {
+        setLoadingFriends(true)
+        const friendsList = await getFriends()
+        setRealFriends(friendsList)
+      } catch (err) {
+        console.error('Failed to load friends:', err)
+      } finally {
+        setLoadingFriends(false)
+      }
+    }
+
+    loadUserFriends()
+  }, [user])
+
+  const handleFriendAdded = () => {
+    // Reload friends when a new friend is added
+    if (user) {
+      getFriends().then(setRealFriends).catch(console.error)
+    }
+  }
 
   // Show loading while checking authentication
   if (loading) {
@@ -233,27 +266,85 @@ export default function Home() {
 
   const handleJoinInterest = async (activityId: number, response: ActivityResponse) => {
     try {
-      setIsLoading(true)
+      setRespondingToActivity(activityId)
       setError(null)
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Map the UI response types to API types
+      const apiResponse: 'in' | 'maybe' = response === 'interested' ? 'in' : 'maybe'
       
-      setActivities(activities.map(activity => 
-        activity.id === activityId 
-          ? { 
-              ...activity, 
-              joinRequests: { ...activity.joinRequests, [currentUser.id]: response },
-              interested: response === 'interested' && !activity.interested.includes(currentUser.id) 
-                ? [...activity.interested, currentUser.id] 
-                : activity.interested.filter(id => id !== currentUser.id)
-            }
-          : activity
-      ))
+      // Handle removing response (if user clicks same response to toggle off)
+      const activity = activities.find(a => a.id === activityId)
+      const currentResponse = activity?.joinRequests[parseInt(currentUser.id) || 0]
+      
+      if (currentResponse === response) {
+        // User is removing their response
+        await removeActivityResponse(activityId.toString())
+        
+        // Update local state
+        setActivities(activities.map(activity => 
+          activity.id === activityId 
+            ? { 
+                ...activity, 
+                joinRequests: Object.fromEntries(
+                  Object.entries(activity.joinRequests).filter(([id]) => id !== (parseInt(currentUser.id) || 0).toString())
+                ),
+                interested: activity.interested.filter(id => id !== parseInt(currentUser.id) || 0)
+              }
+            : activity
+        ))
+      } else {
+        // User is adding/changing their response
+        await respondToActivity(activityId.toString(), apiResponse)
+        
+        // Update local state
+        setActivities(activities.map(activity => 
+          activity.id === activityId 
+            ? { 
+                ...activity, 
+                joinRequests: { ...activity.joinRequests, [parseInt(currentUser.id) || 0]: response },
+                interested: response === 'interested' && !activity.interested.includes(parseInt(currentUser.id) || 0) 
+                  ? [...activity.interested, parseInt(currentUser.id) || 0] 
+                  : response === 'interested' 
+                    ? activity.interested
+                    : activity.interested.filter(id => id !== parseInt(currentUser.id) || 0)
+              }
+            : activity
+        ))
+      }
     } catch (err) {
-      setError('Failed to update activity response. Please try again.')
+      console.error('Activity response error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update activity response. Please try again.')
     } finally {
-      setIsLoading(false)
+      setRespondingToActivity(null)
+    }
+  }
+
+  const handleShare = async (activityId: number) => {
+    const activity = activities.find(a => a.id === activityId)
+    if (!activity) return
+    
+    const shareUrl = `${window.location.origin}/activity/${activityId}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: activity.title,
+          text: `Join me for ${activity.title}! ${activity.description || ''}`,
+          url: shareUrl,
+        })
+      } catch (err) {
+        // User cancelled sharing or sharing failed
+        console.log('Sharing cancelled or failed:', err)
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareSuccess(true)
+        setTimeout(() => setShareSuccess(false), 2000)
+      } catch (err) {
+        console.error('Failed to copy to clipboard:', err)
+      }
     }
   }
 
@@ -276,9 +367,9 @@ export default function Home() {
         timeframe: timeframe, // Use the timeframe from form data
         location: newActivity.location || '',
         host: { 
-          id: parseInt(newActivity.creator.id) || 1, 
-          name: newActivity.creator.name || 'User', 
-          avatar: newActivity.creator.avatar || undefined 
+          id: parseInt(newActivity.creator.id) || parseInt(currentUser.id) || 1, 
+          name: newActivity.creator.name || currentUser.name || 'User', 
+          avatar: newActivity.creator.avatar || currentUser.avatar || undefined 
         },
         type: newActivity.category === 'spontaneous' ? 'spontaneous' : 'planned',
         interested: [],
@@ -409,6 +500,13 @@ export default function Home() {
           </div>
         )}
 
+        {/* Share Success Display */}
+        {shareSuccess && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+            <div className="text-green-600 text-sm">Activity link copied to clipboard!</div>
+          </div>
+        )}
+
         {/* Content Areas */}
         <ErrorBoundary>
         {activeTab === 'activities' && (
@@ -424,61 +522,15 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="space-y-6">
-              {/* Current Activities Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  Current Activities
-                </h3>
-                {activities.filter(activity => activity.type !== 'completed').map((activity) => (
-                  <ActivityCard
-                    key={activity.id}
-                    activity={activity}
-                    currentUserId={currentUser.id}
-                    onJoinInterest={handleJoinInterest}
-                  />
-                ))}
-              </div>
-
-              {/* Past Activities Section */}
-              {activities.filter(activity => activity.type === 'completed').length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-600 border-b border-gray-200 pb-2">
-                    Past Activities
-                  </h3>
-                  {activities.filter(activity => activity.type === 'completed').map((activity) => (
-                    <ActivityCard
-                      key={activity.id}
-                      activity={activity}
-                      currentUserId={currentUser.id}
-                      onJoinInterest={handleJoinInterest}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {isLoading && (
-                <div className="flex justify-center py-8">
-                  <LoadingSpinner size="lg" />
-                </div>
-              )}
-
-              {activities.length === 0 && !isLoading && (
-                <EmptyState
-                  icon={<span className="text-4xl">⚡</span>}
-                  title="No activities yet"
-                  description="Be the first to post something fun to do! Share what you're up to and see who wants to join."
-                  action={
-                    <button
-                      onClick={() => setShowActivityForm(true)}
-                      className="button-gradient text-white px-6 py-3 rounded-xl font-medium"
-                    >
-                      Post Your First Activity
-                    </button>
-                  }
-                />
-              )}
-            </div>
+            <ActivityFeed
+              activities={activities}
+              currentUserId={parseInt(currentUser.id) || 0}
+              isLoading={isLoading}
+              onJoinInterest={handleJoinInterest}
+              onCreateActivity={() => setShowActivityForm(true)}
+              respondingToActivity={respondingToActivity}
+              onShare={handleShare}
+            />
           </div>
         )}
 
@@ -509,40 +561,83 @@ export default function Home() {
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Your Crew</h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {friends.map((friend) => (
-                <FriendCard key={friend.id} friend={friend} />
-              ))}
+            {/* Friends Manager Component */}
+            <FriendsManager onFriendAdded={handleFriendAdded} />
 
-              {friends.length === 0 && (
-                <div className="col-span-full">
+            {/* Current Friends Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+                Your Friends ({realFriends.length})
+              </h3>
+              
+              {loadingFriends ? (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : realFriends.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {realFriends.map((friendReq) => {
+                    // Convert FriendRequest to Friend format for legacy component compatibility
+                    const friend = friendReq.sender.id === user?.id 
+                      ? friendReq.receiver 
+                      : friendReq.sender
+                    
+                    if (!friend) return null
+                    
+                    return (
+                      <div key={friendReq.id} className="bg-white rounded-lg border p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <span className="text-indigo-600 font-bold text-lg">
+                              {friend.name ? friend.name[0].toUpperCase() : '👤'}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-800">
+                              {friend.name || 'Unknown User'}
+                            </h4>
+                            <p className="text-sm text-gray-500">{friend.phone}</p>
+                            <div className="flex items-center space-x-1 mt-1">
+                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                              <span className="text-xs text-green-600">Connected</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
                   <EmptyState
                     icon={<span className="text-4xl">👥</span>}
                     title="No friends yet"
-                    description="Add people you've hung out with to see their activities and availability!"
+                    description="Add people by their phone number to see their activities and hang out together!"
                   />
                 </div>
               )}
             </div>
 
-            {/* Discover Friends Section */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800">People You've Hung Out With</h3>
-                <p className="text-xs sm:text-sm text-gray-500">Add them to see their activities</p>
+            {/* Legacy Discover Friends Section - Keep for demo purposes */}
+            {discoverFriends.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Suggested Connections</h3>
+                  <p className="text-xs sm:text-sm text-gray-500">People you might know</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {discoverFriends.slice(0, 3).map((person) => (
+                    <FriendCard 
+                      key={person.id} 
+                      friend={person} 
+                      type="discover" 
+                      onAddFriend={handleAddFriend}
+                    />
+                  ))}
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {discoverFriends.map((person) => (
-                  <FriendCard 
-                    key={person.id} 
-                    friend={person} 
-                    type="discover" 
-                    onAddFriend={handleAddFriend}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         )}
         </ErrorBoundary>

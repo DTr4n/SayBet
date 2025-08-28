@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clock, MapPin, Users, Heart, AlertCircle, Zap, ChevronDown, ChevronUp, Shield, Eye, Globe } from 'lucide-react'
+import { Clock, MapPin, Users, Heart, AlertCircle, Zap, ChevronDown, ChevronUp, Shield, Eye, Globe, Share2, ExternalLink } from 'lucide-react'
 import { Activity, ActivityResponse } from '@/types/activity'
 import { analyzeActivityTiming } from '@/lib/utils/activityUtils'
 
@@ -10,9 +10,10 @@ interface ActivityCardProps {
   currentUserId?: number
   onJoinInterest?: (activityId: number, response: ActivityResponse) => void
   isResponding?: boolean
+  onShare?: (activityId: number) => void
 }
 
-const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isResponding = false }: ActivityCardProps) => {
+const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isResponding = false, onShare }: ActivityCardProps) => {
   const [showParticipants, setShowParticipants] = useState(false)
   const isCompleted = activity.type === 'completed'
   const timeInfo = analyzeActivityTiming(activity)
@@ -97,6 +98,14 @@ const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isRespondin
   }
 
   const visibilityInfo = getVisibilityInfo(activity.visibility)
+
+  const handleShare = () => {
+    onShare?.(activity.id)
+  }
+
+  const handleViewDetail = () => {
+    window.open(`/activity/${activity.id}`, '_blank')
+  }
 
   return (
     <div className={`glass-card hover-scale p-6 hover:shadow-2xl ${
@@ -236,6 +245,29 @@ const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isRespondin
         </div>
         
         <div className="flex flex-col space-y-2">
+          {/* Share and View Detail buttons */}
+          <div className="flex items-center space-x-2 mb-2">
+            <button
+              onClick={handleViewDetail}
+              className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+              title="View full details"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Details</span>
+            </button>
+            
+            {onShare && (
+              <button
+                onClick={handleShare}
+                className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                title="Share this activity"
+              >
+                <Share2 className="w-3 h-3" />
+                <span>Share</span>
+              </button>
+            )}
+          </div>
+          
           {!isCompleted ? (
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
