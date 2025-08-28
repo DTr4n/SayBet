@@ -21,13 +21,18 @@ export async function GET(request: NextRequest) {
         id: request.id,
         status: request.status,
         createdAt: request.createdAt,
-        sender: {
+        sender: 'sender' in request && request.sender ? {
           id: request.sender.id,
           name: request.sender.name,
           phone: request.sender.phone,
           avatar: request.sender.avatar,
-        },
-        receiver: 'receiver' in request ? {
+        } : (type === 'sent' ? {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          avatar: user.avatar,
+        } : undefined),
+        receiver: 'receiver' in request && request.receiver ? {
           id: request.receiver.id,
           name: request.receiver.name,
           phone: request.receiver.phone,
