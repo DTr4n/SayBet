@@ -3,17 +3,21 @@
 import { useState } from 'react'
 import { Clock, MapPin, Users, Heart, AlertCircle, Zap, ChevronDown, ChevronUp, Shield, Eye, Globe, Share2, ExternalLink } from 'lucide-react'
 import { Activity, ActivityResponse } from '@/types/activity'
+import { ActivityWithDetails } from '@/lib/api/activities'
 import { analyzeActivityTiming } from '@/lib/utils/activityUtils'
+import SocialProofBadge from './SocialProofBadge'
+import FriendParticipants from './FriendParticipants'
 
 interface ActivityCardProps {
-  activity: Activity
-  currentUserId?: number
+  activity: Activity | ActivityWithDetails
+  currentUserId?: string
   onJoinInterest?: (activityId: number, response: ActivityResponse) => void
   isResponding?: boolean
   onShare?: (activityId: number) => void
+  showSocialProof?: boolean
 }
 
-const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isResponding = false, onShare }: ActivityCardProps) => {
+const ActivityCard = ({ activity, currentUserId, onJoinInterest, isResponding = false, onShare, showSocialProof = true }: ActivityCardProps) => {
   const [showParticipants, setShowParticipants] = useState(false)
   const isCompleted = activity.type === 'completed'
   const timeInfo = analyzeActivityTiming(activity)
@@ -145,6 +149,17 @@ const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isRespondin
             {activity.description}
           </p>
           
+          {/* Social Proof Badge */}
+          {showSocialProof && 'responses' in activity && (
+            <div className="mb-3">
+              <SocialProofBadge 
+                activity={activity as ActivityWithDetails} 
+                currentUserId={currentUserId}
+                onClick={() => setShowParticipants(!showParticipants)}
+              />
+            </div>
+          )}
+          
           <div className="space-y-1 mb-4">
             <div className={`flex items-center text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
               <Clock className="w-4 h-4 mr-2" />
@@ -196,8 +211,19 @@ const ActivityCard = ({ activity, currentUserId = 0, onJoinInterest, isRespondin
             )}
           </div>
           
-          {/* Expandable Participant List */}
-          {showParticipants && (activity.interested.length > 0 || Object.values(activity.joinRequests).filter(r => r === 'maybe').length > 0) && (
+          {/* Enhanced Participant List with Friend Highlighting */}
+          {showParticipants && 'responses' in activity && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <FriendParticipants 
+                activity={activity as ActivityWithDetails} 
+                currentUserId={currentUserId}
+                compact={false}
+              />
+            </div>
+          )}
+          
+          {/* Legacy participant list for old activity format */}
+          {showParticipants && !('responses' in activity) && (activity.interested.length > 0 || Object.values(activity.joinRequests).filter(r => r === 'maybe').length > 0) && (
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="space-y-2">
                 {activity.interested.length > 0 && (

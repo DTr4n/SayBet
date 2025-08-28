@@ -148,4 +148,61 @@ export class UserService {
       connection.user1Id === userId ? connection.user2 : connection.user1
     )
   }
+
+  static async getMutualFriends(userId1: string, userId2: string) {
+    // Get friends of user1
+    const user1Friendships = await prisma.friendship.findMany({
+      where: {
+        OR: [
+          { senderId: userId1, status: 'accepted' },
+          { receiverId: userId1, status: 'accepted' },
+        ],
+      },
+    })
+
+    const user1FriendIds = user1Friendships.map(f => 
+      f.senderId === userId1 ? f.receiverId : f.senderId
+    )
+
+    // Get friends of user2
+    const user2Friendships = await prisma.friendship.findMany({
+      where: {
+        OR: [
+          { senderId: userId2, status: 'accepted' },
+          { receiverId: userId2, status: 'accepted' },
+        ],
+      },
+    })
+
+    const user2FriendIds = user2Friendships.map(f => 
+      f.senderId === userId2 ? f.receiverId : f.senderId
+    )
+
+    // Find mutual friend IDs
+    const mutualFriendIds = user1FriendIds.filter(id => user2FriendIds.includes(id))
+
+    // Get mutual friends' details
+    if (mutualFriendIds.length === 0) {
+      return []
+    }
+
+    const mutualFriends = await prisma.user.findMany({
+      where: {
+        id: { in: mutualFriendIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        phone: true,
+      },
+    })
+
+    return mutualFriends
+  }
+
+  static async getMutualFriendCount(userId1: string, userId2: string): Promise<number> {
+    const mutualFriends = await this.getMutualFriends(userId1, userId2)
+    return mutualFriends.length
+  }
 }

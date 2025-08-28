@@ -31,6 +31,7 @@ model User {
   receivedFriendships Friendship[] @relation("FriendshipReceiver") 
   previousConnectionsAsUser1 PreviousConnection[] @relation("ConnectionUser1")
   previousConnectionsAsUser2 PreviousConnection[] @relation("ConnectionUser2")
+  statusUpdates StatusUpdate[]
 
   @@map("users")
 }
@@ -104,4 +105,17 @@ model PreviousConnection {
   
   @@unique([user1Id, user2Id])
   @@map("previous_connections")
+}
+
+model StatusUpdate {
+  id        String   @id @default(cuid())
+  status    String   // "available", "busy", "invisible"
+  message   String?  // Optional custom status message
+  createdAt DateTime @default(now())
+  
+  // Relationships
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("status_updates")
 }

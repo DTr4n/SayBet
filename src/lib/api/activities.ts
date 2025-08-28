@@ -29,8 +29,25 @@ export interface ActivityWithDetails {
   }>
 }
 
-export async function getActivities(): Promise<ActivityWithDetails[]> {
-  const response = await fetch('/api/activities', {
+export interface ActivityFilters {
+  category?: 'spontaneous' | 'planned'
+  visibility?: 'friends' | 'previous' | 'open'
+  creatorType?: 'me' | 'friends' | 'connections'
+  participationStatus?: 'participating' | 'not_participating'
+}
+
+export async function getActivities(filters?: ActivityFilters): Promise<ActivityWithDetails[]> {
+  const params = new URLSearchParams()
+  
+  if (filters?.category) params.append('category', filters.category)
+  if (filters?.visibility) params.append('visibility', filters.visibility)
+  if (filters?.creatorType) params.append('creatorType', filters.creatorType)
+  if (filters?.participationStatus) params.append('participationStatus', filters.participationStatus)
+  
+  const queryString = params.toString()
+  const url = `/api/activities${queryString ? `?${queryString}` : ''}`
+  
+  const response = await fetch(url, {
     credentials: 'include',
   })
 

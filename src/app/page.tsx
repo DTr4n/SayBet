@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, Plus, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { CreateActivityInput } from '@/lib/database/schema'
-import { createActivity, getActivities, respondToActivity, removeActivityResponse, ActivityWithDetails } from '@/lib/api/activities'
+import { createActivity, getActivities, respondToActivity, removeActivityResponse, ActivityWithDetails, ActivityFilters } from '@/lib/api/activities'
 import { getFriends, FriendRequest } from '@/lib/api/friends'
 import ProfileSetup from '@/components/ProfileSetup'
 import Navigation from '@/components/Navigation'
@@ -14,6 +14,11 @@ import ActivityFeed from '@/components/ActivityFeed'
 import ActivityForm from '@/components/ActivityForm'
 import FriendCard from '@/components/FriendCard'
 import FriendsManager from '@/components/FriendsManager'
+import PreviousConnectionsDiscovery from '@/components/PreviousConnectionsDiscovery'
+import FriendProfile from '@/components/FriendProfile'
+import ActivityFiltersComponent from '@/components/ActivityFilters'
+import FriendStatusUpdates from '@/components/FriendStatusUpdates'
+import StatusUpdateForm from '@/components/StatusUpdateForm'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import EmptyState from '@/components/EmptyState'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -34,6 +39,9 @@ export default function Home() {
   const [realFriends, setRealFriends] = useState<FriendRequest[]>([])
   const [loadingFriends, setLoadingFriends] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null)
+  const [activityFilters, setActivityFilters] = useState<ActivityFilters>({})
+  const [showStatusForm, setShowStatusForm] = useState(false)
 
   // Mock activities data - must be initialized before any returns
   const [activities, setActivities] = useState<Activity[]>([
@@ -156,45 +164,45 @@ export default function Home() {
   ])
 
 
-  // Load activities when user is authenticated
-  useEffect(() => {
-    const loadActivities = async () => {
-      if (!user) return
+  // Load activities when user is authenticated or filters change
+  const loadActivities = async () => {
+    if (!user) return
+    
+    try {
+      setLoadingActivities(true)
+      const apiActivities = await getActivities(activityFilters)
       
-      try {
-        setLoadingActivities(true)
-        const apiActivities = await getActivities()
-        
-        // Convert API activities to legacy format for existing components
-        const legacyActivities: Activity[] = apiActivities.map(activity => ({
-          id: parseInt(activity.id) || 0,
-          title: activity.title,
-          description: activity.description || '',
-          timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
-          location: activity.location || '',
-          host: {
-            id: parseInt(activity.creator.id) || 0,
-            name: activity.creator.name || 'Unknown',
-            avatar: activity.creator.avatar || undefined
-          },
-          type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
-          interested: [],
-          joinRequests: {},
-          vibe: 'chill', // Default since vibe field was removed
-          visibility: activity.visibility
-        }))
-        
-        setActivities(legacyActivities)
-      } catch (err) {
-        console.error('Failed to load activities:', err)
-        // Keep existing mock data if API fails
-      } finally {
-        setLoadingActivities(false)
-      }
+      // Convert API activities to legacy format for existing components
+      const legacyActivities: Activity[] = apiActivities.map(activity => ({
+        id: parseInt(activity.id) || 0,
+        title: activity.title,
+        description: activity.description || '',
+        timeframe: activity.time || (activity.date ? new Date(activity.date).toLocaleDateString() : 'No time specified'),
+        location: activity.location || '',
+        host: {
+          id: parseInt(activity.creator.id) || 0,
+          name: activity.creator.name || 'Unknown',
+          avatar: activity.creator.avatar || undefined
+        },
+        type: activity.category === 'spontaneous' ? 'spontaneous' : 'planned',
+        interested: [],
+        joinRequests: {},
+        vibe: 'chill', // Default since vibe field was removed
+        visibility: activity.visibility
+      }))
+      
+      setActivities(legacyActivities)
+    } catch (err) {
+      console.error('Failed to load activities:', err)
+      // Keep existing mock data if API fails
+    } finally {
+      setLoadingActivities(false)
     }
+  }
 
+  useEffect(() => {
     loadActivities()
-  }, [user])
+  }, [user, activityFilters])
 
   // Load friends when user is authenticated
   useEffect(() => {
@@ -284,6 +292,13 @@ export default function Home() {
       console.error('Failed to update availability status:', error)
       // Revert on error
       setAvailabilityStatus(user?.availabilityStatus || "available")
+    }
+  }
+
+  const handleStatusUpdate = (status: string, message?: string) => {
+    setAvailabilityStatus(status)
+    if (user) {
+      updateUser({ ...user, availabilityStatus: status })
     }
   }
 
@@ -437,30 +452,27 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className={`hidden sm:flex items-center space-x-2 rounded-lg px-3 py-1 ${
-                availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
-                availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
-                'bg-gray-50 border border-gray-200'
-              }`}>
+              <button
+                onClick={() => setShowStatusForm(true)}
+                className={`hidden sm:flex items-center space-x-2 rounded-lg px-3 py-1 hover:opacity-80 transition-opacity ${
+                  availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
+                  availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
+                  'bg-gray-50 border border-gray-200'
+                }`}
+              >
                 <div className={`w-2 h-2 rounded-full ${
                   availabilityStatus === 'available' ? 'bg-green-400' :
                   availabilityStatus === 'busy' ? 'bg-red-400' :
                   'bg-gray-400'
                 }`}></div>
-                <select 
-                  value={availabilityStatus}
-                  onChange={(e) => handleAvailabilityChange(e.target.value)}
-                  className={`bg-transparent text-sm border-none outline-none ${
-                    availabilityStatus === 'available' ? 'text-green-700' :
-                    availabilityStatus === 'busy' ? 'text-red-700' :
-                    'text-gray-700'
-                  }`}
-                >
-                  {availabilityOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
+                <span className={`text-sm capitalize ${
+                  availabilityStatus === 'available' ? 'text-green-700' :
+                  availabilityStatus === 'busy' ? 'text-red-700' :
+                  'text-gray-700'
+                }`}>
+                  {availabilityStatus}
+                </span>
+              </button>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1 sm:space-x-2">
                   <span className="hidden sm:inline text-sm text-gray-600">Hey,</span>
@@ -480,30 +492,27 @@ export default function Home() {
             </div>
           </div>
           {/* Mobile availability status */}
-          <div className={`sm:hidden mt-3 flex items-center space-x-2 rounded-lg px-3 py-2 ${
-            availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
-            availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
-            'bg-gray-50 border border-gray-200'
-          }`}>
+          <button
+            onClick={() => setShowStatusForm(true)}
+            className={`sm:hidden mt-3 flex items-center space-x-2 rounded-lg px-3 py-2 w-full hover:opacity-80 transition-opacity ${
+              availabilityStatus === 'available' ? 'bg-green-50 border border-green-200' :
+              availabilityStatus === 'busy' ? 'bg-red-50 border border-red-200' :
+              'bg-gray-50 border border-gray-200'
+            }`}
+          >
             <div className={`w-2 h-2 rounded-full ${
               availabilityStatus === 'available' ? 'bg-green-400' :
               availabilityStatus === 'busy' ? 'bg-red-400' :
               'bg-gray-400'
             }`}></div>
-            <select 
-              value={availabilityStatus}
-              onChange={(e) => handleAvailabilityChange(e.target.value)}
-              className={`bg-transparent text-sm border-none outline-none w-full ${
-                availabilityStatus === 'available' ? 'text-green-700' :
-                availabilityStatus === 'busy' ? 'text-red-700' :
-                'text-gray-700'
-              }`}
-            >
-              {availabilityOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
+            <span className={`text-sm capitalize ${
+              availabilityStatus === 'available' ? 'text-green-700' :
+              availabilityStatus === 'busy' ? 'text-red-700' :
+              'text-gray-700'
+            }`}>
+              {availabilityStatus} - Tap to update
+            </span>
+          </button>
         </div>
       </header>
 
@@ -537,19 +546,26 @@ export default function Home() {
           <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Activity Feed</h2>
-              <button 
-                onClick={() => setShowActivityForm(true)}
-                className="flex items-center justify-center space-x-2 button-gradient text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-medium w-full sm:w-auto"
-              >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Post Activity</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <ActivityFiltersComponent
+                  filters={activityFilters}
+                  onFiltersChange={setActivityFilters}
+                  onClear={() => setActivityFilters({})}
+                />
+                <button 
+                  onClick={() => setShowActivityForm(true)}
+                  className="flex items-center justify-center space-x-2 button-gradient text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-medium w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base">Post Activity</span>
+                </button>
+              </div>
             </div>
 
             <ActivityFeed
               activities={activities}
               currentUserId={parseInt(currentUser.id) || 0}
-              isLoading={isLoading}
+              isLoading={loadingActivities}
               onJoinInterest={handleJoinInterest}
               onCreateActivity={() => setShowActivityForm(true)}
               respondingToActivity={respondingToActivity}
@@ -581,86 +597,105 @@ export default function Home() {
 
         {activeTab === 'friends' && (
           <div className="space-y-6 sm:space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Your Crew</h2>
-            </div>
-
-            {/* Friends Manager Component */}
-            <FriendsManager onFriendAdded={handleFriendAdded} />
-
-            {/* Current Friends Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
-                Your Friends ({realFriends.length})
-              </h3>
-              
-              {loadingFriends ? (
-                <div className="flex justify-center py-8">
-                  <LoadingSpinner size="lg" />
+            {selectedFriendId ? (
+              <FriendProfile 
+                friendId={selectedFriendId}
+                onBack={() => setSelectedFriendId(null)}
+              />
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Your Crew</h2>
                 </div>
-              ) : realFriends.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {realFriends.map((friendReq) => {
-                    // Convert FriendRequest to Friend format for legacy component compatibility
-                    const friend = friendReq.sender.id === user?.id 
-                      ? friendReq.receiver 
-                      : friendReq.sender
-                    
-                    if (!friend) return null
-                    
-                    return (
-                      <div key={friendReq.id} className="bg-white rounded-lg border p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                            <span className="text-indigo-600 font-bold text-lg">
-                              {friend.name ? friend.name[0].toUpperCase() : '👤'}
-                            </span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-800">
-                              {friend.name || 'Unknown User'}
-                            </h4>
-                            <p className="text-sm text-gray-500">{friend.phone}</p>
-                            <div className="flex items-center space-x-1 mt-1">
-                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                              <span className="text-xs text-green-600">Connected</span>
+
+                {/* Friend Status Updates */}
+                <FriendStatusUpdates />
+
+                {/* Friends Manager Component */}
+                <FriendsManager onFriendAdded={handleFriendAdded} />
+
+                {/* Current Friends Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+                    Your Friends ({realFriends.length})
+                  </h3>
+                  
+                  {loadingFriends ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner size="lg" />
+                    </div>
+                  ) : realFriends.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {realFriends.map((friendReq) => {
+                        // Convert FriendRequest to Friend format for legacy component compatibility
+                        const friend = friendReq.sender.id === user?.id 
+                          ? friendReq.receiver 
+                          : friendReq.sender
+                        
+                        if (!friend) return null
+                        
+                        return (
+                          <button
+                            key={friendReq.id}
+                            onClick={() => setSelectedFriendId(friend.id)}
+                            className="bg-white rounded-lg border p-4 hover:shadow-md transition-shadow w-full text-left"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <span className="text-indigo-600 font-bold text-lg">
+                                  {friend.name ? friend.name[0].toUpperCase() : '👤'}
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-800">
+                                  {friend.name || 'Unknown User'}
+                                </h4>
+                                <p className="text-sm text-gray-500">{friend.phone}</p>
+                                <div className="flex items-center space-x-1 mt-1">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                  <span className="text-xs text-green-600">Connected</span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <EmptyState
+                        icon={<span className="text-4xl">👥</span>}
+                        title="No friends yet"
+                        description="Add people by their phone number to see their activities and hang out together!"
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <EmptyState
-                    icon={<span className="text-4xl">👥</span>}
-                    title="No friends yet"
-                    description="Add people by their phone number to see their activities and hang out together!"
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Legacy Discover Friends Section - Keep for demo purposes */}
-            {discoverFriends.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Suggested Connections</h3>
-                  <p className="text-xs sm:text-sm text-gray-500">People you might know</p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {discoverFriends.slice(0, 3).map((person) => (
-                    <FriendCard 
-                      key={person.id} 
-                      friend={person} 
-                      type="discover" 
-                      onAddFriend={handleAddFriend}
-                    />
-                  ))}
-                </div>
-              </div>
+                {/* Previous Connections Discovery */}
+                <PreviousConnectionsDiscovery onFriendRequestSent={handleFriendAdded} />
+
+                {/* Legacy Discover Friends Section - Keep for demo purposes */}
+                {discoverFriends.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Suggested Connections</h3>
+                      <p className="text-xs sm:text-sm text-gray-500">People you might know</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {discoverFriends.slice(0, 3).map((person) => (
+                        <FriendCard 
+                          key={person.id} 
+                          friend={person} 
+                          type="discover" 
+                          onAddFriend={handleAddFriend}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -673,6 +708,14 @@ export default function Home() {
         onClose={() => setShowActivityForm(false)}
         onSubmit={handleCreateActivity}
         isLoading={isLoading}
+      />
+
+      {/* Status Update Form Modal */}
+      <StatusUpdateForm
+        currentStatus={availabilityStatus}
+        isOpen={showStatusForm}
+        onClose={() => setShowStatusForm(false)}
+        onStatusUpdated={handleStatusUpdate}
       />
     </div>
   )

@@ -47,6 +47,12 @@ export const UpdateFriendshipSchema = z.object({
   status: z.enum(['pending', 'accepted', 'blocked']),
 })
 
+// Status update schemas
+export const CreateStatusUpdateSchema = z.object({
+  status: z.enum(['available', 'busy', 'invisible']),
+  message: z.string().max(100, 'Status message must be 100 characters or less').optional(),
+})
+
 // Type exports
 export type CreateUserInput = z.infer<typeof CreateUserSchema>
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>
@@ -56,3 +62,4 @@ export type UpdateActivityInput = z.infer<typeof UpdateActivitySchema>
 export type CreateActivityResponseInput = z.infer<typeof CreateActivityResponseSchema>
 export type CreateFriendshipInput = z.infer<typeof CreateFriendshipSchema>
 export type UpdateFriendshipInput = z.infer<typeof UpdateFriendshipSchema>
+export type CreateStatusUpdateInput = z.infer<typeof CreateStatusUpdateSchema>

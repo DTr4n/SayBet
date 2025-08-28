@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { UserPlus, Check, X, Phone } from 'lucide-react'
-import { getFriendRequests, sendFriendRequest, respondToFriendRequest, FriendRequest } from '@/lib/api/friends'
+import { UserPlus, Check, X, Phone, Search } from 'lucide-react'
+import { getFriendRequests, sendFriendRequest, respondToFriendRequest, searchUserByPhone, FriendRequest, SearchUser } from '@/lib/api/friends'
 import LoadingSpinner from './LoadingSpinner'
 import EmptyState from './EmptyState'
 
@@ -17,6 +17,8 @@ const FriendsManager = ({ onFriendAdded }: FriendsManagerProps) => {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResult, setSearchResult] = useState<SearchUser | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -41,16 +43,35 @@ const FriendsManager = ({ onFriendAdded }: FriendsManagerProps) => {
     }
   }
 
-  const handleSendRequest = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSearch = async () => {
     if (!phoneNumber.trim()) return
+
+    try {
+      setIsSearching(true)
+      setError(null)
+      setSearchResult(null)
+      
+      const user = await searchUserByPhone(phoneNumber.trim())
+      setSearchResult(user)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search for user')
+      setSearchResult(null)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleSendRequest = async (userToAdd?: SearchUser) => {
+    const phoneToUse = userToAdd?.phone || phoneNumber.trim()
+    if (!phoneToUse) return
 
     try {
       setIsSubmitting(true)
       setError(null)
-      await sendFriendRequest(phoneNumber.trim())
+      await sendFriendRequest(phoneToUse)
       setSuccessMessage('Friend request sent!')
       setPhoneNumber('')
+      setSearchResult(null)
       setShowAddFriend(false)
       await loadFriendRequests()
       setTimeout(() => setSuccessMessage(null), 3000)
@@ -114,11 +135,11 @@ const FriendsManager = ({ onFriendAdded }: FriendsManagerProps) => {
 
       {/* Add Friend Form */}
       {showAddFriend && (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <form onSubmit={handleSendRequest} className="space-y-3">
+        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+          <div className="space-y-3">
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
+                Search by Phone Number
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -126,31 +147,97 @@ const FriendsManager = ({ onFriendAdded }: FriendsManagerProps) => {
                   type="tel"
                   id="phone"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value)
+                    setSearchResult(null) // Clear search result when typing
+                  }}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="+1 (555) 123-4567"
-                  required
                 />
               </div>
             </div>
             <div className="flex space-x-2">
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex items-center space-x-1 bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+                type="button"
+                onClick={handleSearch}
+                disabled={isSearching || !phoneNumber.trim()}
+                className="flex items-center space-x-1 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? <LoadingSpinner size="sm" /> : <UserPlus className="w-4 h-4" />}
-                <span>Send Request</span>
+                {isSearching ? <LoadingSpinner size="sm" /> : <Search className="w-4 h-4" />}
+                <span>Search</span>
               </button>
               <button
                 type="button"
-                onClick={() => setShowAddFriend(false)}
+                onClick={() => {
+                  setShowAddFriend(false)
+                  setPhoneNumber('')
+                  setSearchResult(null)
+                }}
                 className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
             </div>
-          </form>
+          </div>
+
+          {/* Search Results */}
+          {searchResult && (
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Search Result</h4>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span className="text-indigo-600 font-semibold">
+                      {searchResult.name ? searchResult.name[0].toUpperCase() : '👤'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">
+                      {searchResult.name || 'Unknown User'}
+                    </p>
+                    <p className="text-sm text-gray-500">{searchResult.phone}</p>
+                    {searchResult.relationshipStatus !== 'none' && (
+                      <p className="text-xs text-gray-400 capitalize">
+                        Status: {searchResult.relationshipStatus}
+                      </p>
+                    )}
+                    {searchResult.mutualFriendCount !== undefined && searchResult.mutualFriendCount > 0 && (
+                      <p className="text-xs text-purple-600">
+                        {searchResult.mutualFriendCount} mutual {searchResult.mutualFriendCount === 1 ? 'friend' : 'friends'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  {searchResult.relationshipStatus === 'none' && (
+                    <button
+                      onClick={() => handleSendRequest(searchResult)}
+                      disabled={isSubmitting}
+                      className="flex items-center space-x-1 bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+                    >
+                      {isSubmitting ? <LoadingSpinner size="sm" /> : <UserPlus className="w-4 h-4" />}
+                      <span>Send Request</span>
+                    </button>
+                  )}
+                  {searchResult.relationshipStatus === 'pending' && (
+                    <div className="text-sm text-orange-600 bg-orange-100 px-3 py-2 rounded-lg">
+                      Request pending
+                    </div>
+                  )}
+                  {searchResult.relationshipStatus === 'accepted' && (
+                    <div className="text-sm text-green-600 bg-green-100 px-3 py-2 rounded-lg">
+                      Already friends
+                    </div>
+                  )}
+                  {searchResult.relationshipStatus === 'blocked' && (
+                    <div className="text-sm text-red-600 bg-red-100 px-3 py-2 rounded-lg">
+                      Blocked
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

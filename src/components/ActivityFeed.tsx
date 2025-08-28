@@ -15,6 +15,7 @@ interface ActivityFeedProps {
   onCreateActivity?: () => void
   respondingToActivity?: number | null
   onShare?: (activityId: number) => void
+  showSocialProof?: boolean
 }
 
 interface ActivitySection {
@@ -33,7 +34,8 @@ const ActivityFeed = ({
   onJoinInterest,
   onCreateActivity,
   respondingToActivity,
-  onShare
+  onShare,
+  showSocialProof = true
 }: ActivityFeedProps) => {
   
   // Use the enhanced categorization utility
@@ -131,10 +133,11 @@ const ActivityFeed = ({
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
-                  currentUserId={currentUserId}
+                  currentUserId={currentUserId?.toString()}
                   onJoinInterest={onJoinInterest}
                   isResponding={respondingToActivity === activity.id}
                   onShare={onShare}
+                  showSocialProof={showSocialProof}
                 />
               ))}
             </div>

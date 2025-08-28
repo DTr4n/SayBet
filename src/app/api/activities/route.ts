@@ -6,8 +6,17 @@ import { CreateActivitySchema } from '@/lib/database/schema'
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
+    const { searchParams } = new URL(request.url)
     
-    const activities = await ActivityService.getActivitiesForUser(user.id)
+    // Extract filter parameters
+    const filters = {
+      category: searchParams.get('category'), // 'spontaneous' | 'planned'
+      visibility: searchParams.get('visibility'), // 'friends' | 'previous' | 'open'
+      creatorType: searchParams.get('creatorType'), // 'me' | 'friends' | 'connections'
+      participationStatus: searchParams.get('participationStatus'), // 'participating' | 'not_participating'
+    }
+    
+    const activities = await ActivityService.getActivitiesForUser(user.id, filters)
 
     return NextResponse.json({
       activities: activities.map(activity => ({

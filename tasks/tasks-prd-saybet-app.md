@@ -6,6 +6,12 @@
 - `src/components/ActivityFeed.tsx` - Activity display and interaction component
 - `src/components/ActivityForm.tsx` - Activity creation form component
 - `src/components/DiscoverTab.tsx` - AI suggestions and discovery interface
+- `src/components/PreviousConnectionsDiscovery.tsx` - Previous connections discovery component
+- `src/components/FriendProfile.tsx` - Friend profile page with activity history and availability
+- `src/components/ActivityFilters.tsx` - Activity feed filtering component with visibility and friend-based filters
+- `src/components/MutualFriends.tsx` - Modal component for displaying mutual friends between users
+- `src/components/FriendStatusUpdates.tsx` - Component for displaying friend status updates and availability
+- `src/components/StatusUpdateForm.tsx` - Modal form for updating user availability status and messages
 - `src/components/FriendsTab.tsx` - Friend management and social network interface
 - `src/components/Navigation.tsx` - Tab navigation component
 - `src/lib/auth/index.ts` - Authentication utilities and session management
@@ -18,15 +24,24 @@
 - `src/app/api/auth/logout/route.ts` - API route for user logout
 - `src/app/api/auth/me/route.ts` - API route for getting current user data
 - `src/app/api/user/profile/route.ts` - API route for updating user profile
+- `src/app/api/users/search/route.ts` - API route for searching users by phone number
+- `src/app/api/discover/previous-connections/route.ts` - API route for fetching previous connections
+- `src/app/api/friends/[id]/profile/route.ts` - API route for getting detailed friend profile data
+- `src/app/api/users/[id]/mutual-friends/route.ts` - API route for fetching mutual friends between users
+- `src/app/api/status/route.ts` - API route for creating and retrieving status updates
+- `src/app/api/friends/status/route.ts` - API route for getting friends' current availability status
 - `src/middleware.ts` - Route protection middleware
 - `src/lib/api/activities.ts` - Activity CRUD operations and API calls
 - `src/lib/api/friends.ts` - Friend management API calls
 - `src/lib/api/ai.ts` - AI activity suggestion integration (Post-MVP)
+- `src/lib/api/discover.ts` - Previous connections discovery API calls
+- `src/lib/api/status.ts` - Status updates and friend availability API calls
 - `src/lib/database/schema.ts` - Database schema definitions and validation schemas
 - `src/lib/database/client.ts` - Prisma client configuration and connection management
 - `src/lib/database/users.ts` - User service with CRUD operations and authentication helpers
 - `src/lib/database/activities.ts` - Activity service with CRUD operations and visibility logic
 - `src/lib/database/friendships.ts` - Friendship service with relationship management
+- `src/lib/database/statusUpdates.ts` - Status update service with availability tracking
 - `src/lib/database/index.ts` - Database utilities export file
 - `src/lib/utils/validators.ts` - Form validation utilities
 - `src/styles/globals.css` - Global styles and Tailwind configuration
@@ -74,7 +89,7 @@
   - [x] 3.7 Run initial migration and seed database with test data
   - [x] 3.8 Create database utility functions and connection management
 
-- [x] 4.0 Authentication System Implementation
+- [ ] 4.0 Authentication System Implementation
   - [x] 4.1 Set up phone number authentication with SMS verification (Twilio integration)
   - [x] 4.2 Create AuthForm component with phone input and verification code flow
   - [x] 4.3 Implement user session management and protected routes
@@ -94,15 +109,15 @@
   - [x] 5.7 Add activity sharing capabilities with web links
   - [x] 5.8 Build activity detail view and participant list
 
-- [ ] 6.0 Friend Network and Social Features
-  - [ ] 6.1 Create API routes for friend management (/api/friends)
-  - [ ] 6.2 Implement friend search by phone number functionality
-  - [ ] 6.3 Build "People You've Hung Out With" discovery system
-  - [ ] 6.4 Create friend profile pages with activity history and availability
-  - [ ] 6.5 Implement friend activity feed filtering and visibility rules
-  - [ ] 6.6 Add mutual friend detection and display
-  - [ ] 6.7 Build friend status updates and availability tracking
-  - [ ] 6.8 Create social proof elements (friend participation indicators)
+- [x] 6.0 Friend Network and Social Features
+  - [x] 6.1 Create API routes for friend management (/api/friends)
+  - [x] 6.2 Implement friend search by phone number functionality
+  - [x] 6.3 Build "People You've Hung Out With" discovery system
+  - [x] 6.4 Create friend profile pages with activity history and availability
+  - [x] 6.5 Implement friend activity feed filtering and visibility rules
+  - [x] 6.6 Add mutual friend detection and display
+  - [x] 6.7 Build friend status updates and availability tracking
+  - [x] 6.8 Create social proof elements (friend participation indicators)
 
 - [ ] 7.0 Web-First Responsive Design and Polish
   - [ ] 7.1 Optimize mobile experience and touch interactions
