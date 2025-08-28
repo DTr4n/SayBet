@@ -277,6 +277,7 @@ export default function Home() {
 
   // Show profile setup if user hasn't set their name
   if (user && !user.name) {
+    console.log('Showing ProfileSetup - user:', user)
     return <ProfileSetup />
   }
 

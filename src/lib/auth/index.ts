@@ -49,21 +49,22 @@ export async function getServerSession(): Promise<AuthUser | null> {
 }
 
 export async function requireAuth(): Promise<AuthUser> {
-  // DEVELOPMENT MODE: Return mock user for testing
-  if (process.env.NODE_ENV === 'development') {
-    return {
-      id: 'cmeui1jgv0003ro4if40284zp', // Use existing user ID from seed data
-      phone: '+1234567890',
-      name: 'Dev User (Bob Smith)',
-      avatar: null,
-      isVerified: true,
-      availabilityStatus: 'available'
-    }
-  }
-
   const user = await getServerSession()
   
   if (!user) {
+    // DEVELOPMENT MODE: Only use mock user if no real session exists and in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('No real auth session found, using development user')
+      return {
+        id: 'cmeui1jgv0003ro4if40284zp',
+        phone: '+1234567890',
+        name: 'Alice Johnson', // Matches seed data
+        avatar: null,
+        isVerified: true,
+        availabilityStatus: 'available'
+      }
+    }
+    
     throw new Error('Authentication required')
   }
   

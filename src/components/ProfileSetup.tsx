@@ -40,11 +40,13 @@ export default function ProfileSetup() {
       }
 
       const data = await response.json()
+      console.log('Profile updated successfully:', data.user)
       updateUser(data.user)
       setSuccess(true)
       
       // Redirect to main app after successful setup
       setTimeout(() => {
+        console.log('Redirecting after profile setup...')
         window.location.href = '/'
       }, 1500)
     } catch (err) {

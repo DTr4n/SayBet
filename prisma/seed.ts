@@ -14,6 +14,7 @@ async function main() {
   const users = await Promise.all([
     prisma.user.create({
       data: {
+        id: 'cmeui1jgv0003ro4if40284zp', // Fixed ID for development user  
         phone: '+1234567890',
         name: 'Alice Johnson',
         isVerified: true,
@@ -126,6 +127,20 @@ async function main() {
         maxParticipants: 3,
         creatorId: users[3].id
       }
+    }),
+    // Past activity for Alice (Danny) 
+    prisma.activity.create({
+      data: {
+        title: 'Beach Volleyball Last Weekend',
+        description: 'Great weather for volleyball at the beach!',
+        location: 'Santa Monica Beach',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+        time: '10:00 AM',
+        category: 'planned',
+        visibility: 'open',
+        maxParticipants: 8,
+        creatorId: users[0].id // Alice (development user)
+      }
     })
   ])
 
@@ -158,6 +173,21 @@ async function main() {
       data: {
         userId: users[3].id,
         activityId: activities[2].id,
+        response: 'in'
+      }
+    }),
+    // Responses to past beach volleyball activity
+    prisma.activityResponse.create({
+      data: {
+        userId: users[1].id, // Bob
+        activityId: activities[4].id, // Beach volleyball
+        response: 'in'
+      }
+    }),
+    prisma.activityResponse.create({
+      data: {
+        userId: users[2].id, // Charlie
+        activityId: activities[4].id, // Beach volleyball  
         response: 'in'
       }
     })
