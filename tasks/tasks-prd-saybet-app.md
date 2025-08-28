@@ -83,7 +83,7 @@
   - [x] 4.6 Add logout functionality and session persistence
   - [x] 4.7 Create middleware for route protection and user context
 
-- [ ] 5.0 Core Activity Management Features
+- [x] 5.0 Core Activity Management Features
   - [x] 5.1 Create API routes for activity CRUD operations (/api/activities)
   - [x] 5.2 Implement activity creation with form validation and submission
   - [x] 5.3 Build activity feed display with current vs past activity sections
