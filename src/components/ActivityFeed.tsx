@@ -11,10 +11,10 @@ interface ActivityFeedProps {
   activities: Activity[]
   currentUserId?: number
   isLoading?: boolean
-  onJoinInterest?: (activityId: string, response: ActivityResponse) => void
+  onJoinInterest?: (activityId: string | number, response: ActivityResponse) => void
   onCreateActivity?: () => void
   respondingToActivity?: string | null
-  onShare?: (activityId: string) => void
+  onShare?: (activityId: string | number) => void
   showSocialProof?: boolean
 }
 
@@ -131,11 +131,11 @@ const ActivityFeed = ({
             <div className="space-y-4">
               {section.activities.map((activity) => (
                 <ActivityCard
-                  key={activity.id}
+                  key={activity.id?.toString()}
                   activity={activity}
                   currentUserId={currentUserId?.toString()}
                   onJoinInterest={onJoinInterest}
-                  isResponding={respondingToActivity === activity.id}
+                  isResponding={respondingToActivity === activity.id?.toString()}
                   onShare={onShare}
                   showSocialProof={showSocialProof}
                 />

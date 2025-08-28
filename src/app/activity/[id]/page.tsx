@@ -35,8 +35,43 @@ const ActivityDetailPage = () => {
           return
         }
 
-        const activityData = await response.json()
-        setActivity(activityData)
+        const { activity: activityData } = await response.json()
+        
+        // Transform API response to match expected Activity format
+        const transformedActivity = {
+          id: activityData.id,
+          title: activityData.title,
+          description: activityData.description || '',
+          timeframe: activityData.time || (activityData.date ? new Date(activityData.date).toLocaleDateString() : 'No time specified'),
+          location: activityData.location || '',
+          host: {
+            id: parseInt(activityData.creator.id) || 0,
+            name: activityData.creator.name || 'Unknown',
+            avatar: activityData.creator.avatar
+          },
+          creator: activityData.creator, // Also keep creator for new references
+          type: activityData.category === 'spontaneous' ? 'spontaneous' : 'planned',
+          interested: [],
+          joinRequests: {},
+          vibe: 'chill', // Default since API doesn't have vibe
+          visibility: activityData.visibility,
+          maxParticipants: activityData.maxParticipants
+        }
+        
+        // Transform responses to legacy format
+        if (activityData.responses) {
+          activityData.responses.forEach(response => {
+            const userId = parseInt(response.user.id.slice(-6), 36) || Math.abs(response.user.id.split('').reduce((a,b) => (((a << 5) - a) + b.charCodeAt(0))|0, 0))
+            if (response.response === 'in') {
+              transformedActivity.interested.push(userId)
+              transformedActivity.joinRequests[userId] = 'interested'
+            } else if (response.response === 'maybe') {
+              transformedActivity.joinRequests[userId] = 'maybe'
+            }
+          })
+        }
+        
+        setActivity(transformedActivity)
       } catch (err) {
         console.error('Error fetching activity:', err)
         setError('Something went wrong')
@@ -288,7 +323,7 @@ const ActivityDetailPage = () => {
               <div className={`flex items-start text-lg ${isCompleted ? 'text-gray-400' : 'text-gray-600'}`}>
                 <Users className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div>Hosted by {activity.host.name}</div>
+                  <div>Hosted by {activity.creator.name}</div>
                   <div className="text-xs text-gray-500 mt-1">
                     Activity organizer
                   </div>
@@ -401,7 +436,7 @@ const ActivityDetailPage = () => {
                     👤
                   </div>
                   <div className="flex-1">
-                    <span className="text-indigo-700 font-medium">{activity.host.name}</span>
+                    <span className="text-indigo-700 font-medium">{activity.creator.name}</span>
                     <span className="text-xs text-indigo-600 ml-2">(Host)</span>
                   </div>
                 </div>

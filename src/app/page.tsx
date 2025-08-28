@@ -327,16 +327,17 @@ export default function Home() {
   }
 
 
-  const handleJoinInterest = async (activityId: string, response: ActivityResponse) => {
+  const handleJoinInterest = async (activityId: string | number, response: ActivityResponse) => {
     try {
-      setRespondingToActivity(activityId)
+      const normalizedId = typeof activityId === 'number' ? activityId.toString() : activityId
+      setRespondingToActivity(normalizedId)
       setError(null)
       
       // Map the UI response types to API types
       const apiResponse: 'in' | 'maybe' = response === 'interested' ? 'in' : 'maybe'
       
       // Handle removing response (if user clicks same response to toggle off)
-      const activity = activities.find(a => a.id === activityId)
+      const activity = activities.find(a => a.id == activityId) // Use == to handle string/number comparison
       
       // Check current response using the legacy format (populated from API)
       const currentResponse = activity?.joinRequests[currentUser.numericId]
@@ -353,7 +354,7 @@ export default function Home() {
       
       // Optimistically update the UI first
       const updatedActivities = activities.map(act => {
-        if (act.id !== activityId) return act
+        if (act.id != activityId) return act
         
         const newJoinRequests = { ...act.joinRequests }
         const newInterested = [...act.interested]
@@ -391,13 +392,13 @@ export default function Home() {
       // Then sync with backend
       if (currentResponse === response) {
         // User is removing their response
-        console.log('Calling removeActivityResponse for activity:', activityId)
-        await removeActivityResponse(activityId.toString())
+        console.log('Calling removeActivityResponse for activity:', normalizedId)
+        await removeActivityResponse(normalizedId)
         console.log('removeActivityResponse completed')
       } else {
         // User is adding/changing their response
-        console.log('Calling respondToActivity for activity:', activityId, 'with response:', apiResponse)
-        await respondToActivity(activityId.toString(), apiResponse)
+        console.log('Calling respondToActivity for activity:', normalizedId, 'with response:', apiResponse)
+        await respondToActivity(normalizedId, apiResponse)
         console.log('respondToActivity completed')
       }
       
@@ -411,11 +412,12 @@ export default function Home() {
     }
   }
 
-  const handleShare = async (activityId: string) => {
-    const activity = activities.find(a => a.id === activityId)
+  const handleShare = async (activityId: string | number) => {
+    const activity = activities.find(a => a.id == activityId) // Use == to handle string/number comparison
     if (!activity) return
     
-    const shareUrl = `${window.location.origin}/activity/${activityId}`
+    const normalizedId = typeof activityId === 'number' ? activityId.toString() : activityId
+    const shareUrl = `${window.location.origin}/activity/${normalizedId}`
     
     if (navigator.share) {
       try {

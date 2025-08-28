@@ -5,7 +5,7 @@ export interface User {
 }
 
 export interface Activity {
-  id: string
+  id: string | number
   title: string
   description: string
   timeframe: string

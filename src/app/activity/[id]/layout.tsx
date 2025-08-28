@@ -22,14 +22,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       }
     }
     
-    const activity = await response.json()
+    const { activity } = await response.json()
     
     return {
       title: `${activity.title} | SayBet`,
-      description: activity.description || `Join ${activity.host.name} for ${activity.title}`,
+      description: activity.description || `Join ${activity.creator.name} for ${activity.title}`,
       openGraph: {
         title: activity.title,
-        description: activity.description || `Join ${activity.host.name} for ${activity.title}`,
+        description: activity.description || `Join ${activity.creator.name} for ${activity.title}`,
         type: 'website',
         url: `${baseUrl}/activity/${id}`,
         siteName: 'SayBet',
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       twitter: {
         card: 'summary_large_image',
         title: activity.title,
-        description: activity.description || `Join ${activity.host.name} for ${activity.title}`,
+        description: activity.description || `Join ${activity.creator.name} for ${activity.title}`,
         images: ['/og-image.png'],
       },
       robots: {

@@ -11,9 +11,9 @@ import FriendParticipants from './FriendParticipants'
 interface ActivityCardProps {
   activity: Activity | ActivityWithDetails
   currentUserId?: string
-  onJoinInterest?: (activityId: string, response: ActivityResponse) => void
+  onJoinInterest?: (activityId: string | number, response: ActivityResponse) => void
   isResponding?: boolean
-  onShare?: (activityId: string) => void
+  onShare?: (activityId: string | number) => void
   showSocialProof?: boolean
 }
 
@@ -104,11 +104,13 @@ const ActivityCard = ({ activity, currentUserId, onJoinInterest, isResponding = 
   const visibilityInfo = getVisibilityInfo(activity.visibility)
 
   const handleShare = () => {
-    onShare?.(activity.id)
+    const activityId = typeof activity.id === 'number' ? activity.id.toString() : activity.id
+    onShare?.(activityId)
   }
 
   const handleViewDetail = () => {
-    window.open(`/activity/${activity.id}`, '_blank')
+    const activityId = typeof activity.id === 'number' ? activity.id.toString() : activity.id
+    window.open(`/activity/${activityId}`, '_blank')
   }
 
   return (
