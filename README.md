@@ -26,18 +26,6 @@ SayBet solves the fundamental question "what should we do?" by combining AI-powe
 4. **Friends respond easily** - Share web links, no app download required
 5. **Build your network** - Add people you've hung out with to stay connected
 
-## 🚧 Development Status
-
-**Phase 1.0 - Project Setup** ✅ Complete
-- Next.js 15 project with TypeScript
-- Tailwind CSS with glass morphism design system
-- Core dependencies and tooling setup
-
-**Phase 2.0 - UI Foundation** 🔄 Next
-- Navigation and core components
-- Activity cards and forms
-- Friend management interface
-
 ## 🛠 Tech Stack
 
 Built with Next.js 15, TypeScript, Tailwind CSS, PostgreSQL, and Prisma.
@@ -71,7 +59,6 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 - [Product Requirements Document](tasks/prd-saybet-app.md)
 - [Development Tasks](tasks/tasks-prd-saybet-app.md)
-- [Reference Design](reference_materials/social-event-app.tsx)
 
 ---
 
